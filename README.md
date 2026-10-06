@@ -29,15 +29,17 @@ Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu c�
 
 ## Tiến độ
 
-Theo dõi ở tab **Issues** (mỗi giai đoạn một issue) và **Milestones**:
+Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với một người phụ trách chính, khớp bảng phân công ở trên.
 
-| Milestone | Nội dung |
-|---|---|
-| M1 Dataset v1 | S01, D01–D06: phạm vi, thu thập, làm sạch, chunking, câu hỏi và qrels, split, freeze |
-| M2 Baseline | TF-IDF, BM25, bảng Recall@k, MRR, NDCG@k, hard negatives |
-| M3 Mô hình cải tiến | Sentence-BERT, PhoBERT sentence-pair, bi-encoder + cross-encoder |
-| M4 Ứng dụng | Giao diện hỏi đáp, nguồn trích dẫn, câu hỏi tương tự, đánh giá, lịch sử, thống kê |
-| M5 Đánh giá và báo cáo | Chỉ số câu trả lời, 6 phân tích bắt buộc, báo cáo cuối |
+| Milestone | Phụ trách | Nội dung | Phụ thuộc |
+|---|---|---|---|
+| M1 Kho dữ liệu | TV1 Duy | Chốt danh sách thủ tục hộ tịch (URL + ngày lấy); crawl, làm sạch, chia đoạn có tiền tố, tách từ | |
+| M2 Bộ test | TV2 Khang | Guideline gán nhãn 7 loại câu; phân công viết và gán nhãn chéo (~60 câu/người); Cohen's kappa; chia train/dev/test theo nhóm câu hỏi | Câu hỏi viết được ngay; gán nhãn cần M1 |
+| M3 Baseline + Dataset v1 | TV1 Duy | Freeze dataset; TF-IDF, BM25; hard negative từ top-20 BM25 | M1, M2, script đánh giá của TV2 |
+| M4 Đánh giá chung | TV2 Khang | Script đánh giá dùng chung: Recall@k, MRR, NDCG, tỷ lệ từ chối; chỉ số câu trả lời: F1, đúng nguồn, faithfulness | Làm song song, cần xong trước khi chạy mô hình |
+| M5 Mô hình truy hồi | TV3 | SBERT, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative; `retrieve()`; câu hỏi tương tự | M3 |
+| M6 Trả lời + web | TV4 | Template trích nguyên văn kèm nguồn; ngưỡng từ chối trên dev; câu nhiều ý, câu dễ bịa; `answer()`; Streamlit + SQLite; deploy | Khung web làm trước trên dữ liệu giả; ráp thật cần M5 |
+| M7 Phân tích + báo cáo | TV2 (phân tích lỗi), TV5 (slide, báo cáo) | 6 phân tích bắt buộc; báo cáo, slide, demo | M5, M6 |
 
 ## Cấu trúc thư mục
 
