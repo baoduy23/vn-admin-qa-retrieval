@@ -17,11 +17,11 @@ tài liệu gốc → làm sạch → chia đoạn → lập chỉ mục → tru
 
 | | Vai trò | Phụ trách chính |
 |---|---|---|
-| TV1 | Dữ liệu và baseline | Phạm vi, thu thập, làm sạch, chunking, freeze Dataset v1, TF-IDF/BM25, hard negatives |
-| TV2 | Bộ test và đánh giá | Guideline gán nhãn, điều phối gán nhãn chéo, kappa, split, script đánh giá chung, phân tích lỗi |
-| TV3 | Truy hồi dense | SBERT bi-encoder, hybrid, câu hỏi tương tự |
-| TV4 | Rerank và trả lời | Cross-encoder / PhoBERT pair, template trả lời, ngưỡng từ chối |
-| TV5 | App và báo cáo | Streamlit, SQLite lịch sử + thống kê, deploy, báo cáo và slide |
+| TV1: Duy| Dữ liệu + baseline |
+| TV2: Khang | Bộ test và đánh giá |
+| TV3 | Mô hình truy hồi | 
+| TV4 | Trả lời + web | 
+| TV5 | Slide + báo cáo | 
 
 Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác. Chi tiết: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
 
