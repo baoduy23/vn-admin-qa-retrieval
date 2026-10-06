@@ -517,9 +517,9 @@ vị trí chunk đúng đầu tiên:
 
 ## 12 Quy trình commit và Pull Request
 
-> git switch develop
+> git switch main
 >
-> git pull --ff-only origin develop
+> git pull --ff-only origin main
 >
 > git switch -c feature/D04-question-labels
 >
@@ -533,10 +533,10 @@ vị trí chunk đúng đầu tiên:
 >
 > git push -u origin feature/D04-question-labels
 
-- Mỗi giai đoạn một nhánh riêng; không commit trực tiếp lên main hoặc
-  develop.
+- Mỗi giai đoạn một nhánh riêng; không commit trực tiếp lên main.
 
-- Base branch là develop. Mô tả PR gồm Task ID, thay đổi, lệnh chạy, kết
+- Base branch là main. Hướng dẫn Git từng bước cho cả nhóm:
+  [huong-dan-git.md](huong-dan-git.md). Mô tả PR gồm Task ID, thay đổi, lệnh chạy, kết
   quả và điểm reviewer cần xem.
 
 - File HTML hoặc PDF gốc nếu lớn thì không commit thẳng; dùng Git LFS

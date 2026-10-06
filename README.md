@@ -67,6 +67,7 @@ python -m pytest
 
 - [Đề bài](docs/de-bai.md)
 - [Lộ trình và phân công](docs/lo-trinh-va-phan-cong.md)
+- [Hướng dẫn Git cho cả nhóm](docs/huong-dan-git.md): cài đặt, tạo nhánh, commit, mở Pull Request
 - [Phạm vi](docs/scope.md)
 - [Hướng dẫn Thành viên 1: từ chốt phạm vi đến Dataset v1 và baseline](docs/huong-dan-thanh-vien-1.md) ([bản Word](docs/files/Huong_dan_Thanh_vien_1_De_tai_10_Dataset_v1.docx))
 
