@@ -8,7 +8,7 @@
 
 **Ngoài phạm vi (dùng làm câu hỏi từ chối):** đất đai, cư trú, thuế, các lĩnh vực khác.
 
-**Nguồn chính:** Cổng Dịch vụ công quốc gia và web thuvienphapluat.vn (lọc lĩnh vực Hộ tịch); văn bản pháp luật về hộ tịch còn hiệu lực tại ngày tải.
+**Nguồn chính:** vbpl.vn | CSDL quốc gia về pháp luật (lọc lĩnh vực Hộ tịch); văn bản pháp luật về hộ tịch còn hiệu lực tại ngày tải.
 
 **Ngày chốt:** 2026-10-06
 
