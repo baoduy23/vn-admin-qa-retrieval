@@ -1,0 +1,6 @@
+unicode_normalization: NFC
+lowercase: false            # lowercase là lựa chọn của từng mô hình, không làm ở bước làm sạch
+remove_stopwords: false
+segmenter:
+  name: underthesea         # chốt một công cụ duy nhất
+  version: ""

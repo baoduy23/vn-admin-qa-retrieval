@@ -1,0 +1,10 @@
+bm25:
+  k1: 1.5
+  b: 0.75
+tfidf:
+  ngram_range: [1, 2]
+  sublinear_tf: true
+token_level: [syllable, word]
+eval:
+  ks: [1, 3, 5, 10]
+  split: validation         # chỉ chạy test một lần sau khi chốt tham số

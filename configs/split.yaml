@@ -1,0 +1,4 @@
+group_by: question_group_id
+stratify_by: type
+ratios: {train: 0.6, validation: 0.2, test: 0.2}
+random_seed: 42

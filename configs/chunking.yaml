@@ -1,0 +1,5 @@
+strategy: by_field          # mỗi trường của thủ tục là một đoạn
+max_tokens: 256             # giới hạn đầu vào PhoBERT
+overlap_sentences: 1
+add_context_prefix: true    # "<Tên thủ tục>. <Tên trường>: ..."
+chunk_id_format: "{doc_id}__{field}__{index}"
