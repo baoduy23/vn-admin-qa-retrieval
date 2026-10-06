@@ -1,5 +1,5 @@
 strategy: by_field          # mỗi trường của thủ tục là một đoạn
-max_tokens: 256             # giới hạn đầu vào PhoBERT
+max_tokens: 200             # đếm theo từ sau tách từ; chừa chỗ cho câu hỏi khi ghép cặp vào PhoBERT/cross-encoder (giới hạn 256 subword)
 overlap_sentences: 1
-add_context_prefix: true    # "<Tên thủ tục>. <Tên trường>: ..."
+add_context_prefix: true    # "<Tên thủ tục> | <Tên mục>: ..."
 chunk_id_format: "{doc_id}__{field}__{index}"
