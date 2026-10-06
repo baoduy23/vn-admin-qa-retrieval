@@ -6,7 +6,8 @@ _Từ chốt phạm vi tài liệu đến Dataset v1 và baseline BM25_
 hoặc học vụ
 
 **Vai trò:** Thành viên 1 phụ trách thu thập tài liệu, tiền xử lý, chia
-đoạn, bộ câu hỏi có nhãn và baseline TF IDF, BM25
+đoạn, freeze Dataset v1 và baseline TF IDF, BM25. Bộ câu hỏi do cả nhóm
+viết, Thành viên 2 điều phối (xem file Lộ trình và phân công)
 
 **Phạm vi mặc định:** lĩnh vực hộ tịch (có thể đổi sang học vụ UEH, xem
 mục 3)
@@ -28,17 +29,17 @@ split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
 
 ## 1 Tổng quan trách nhiệm của Thành viên 1
 
-| **Giai đoạn** | **Công việc**                                   | **Đầu ra chính**                              |
-|---------------|-------------------------------------------------|-----------------------------------------------|
-| S01           | Chốt phạm vi và danh sách nguồn                 | docs/scope.md, data/raw/source_list.csv       |
-| D01           | Thu thập tài liệu gốc                           | data/raw/html hoặc pdf, raw_manifest.csv      |
-| D02           | Trích xuất, làm sạch và EDA kho tài liệu        | documents.csv, báo cáo chất lượng             |
-| D03           | Chia đoạn (chunking)                            | chunks.csv có chunk_id ổn định                |
-| D04           | Xây bộ câu hỏi và gán nhãn đoạn đúng            | questions.csv, qrels.csv                      |
-| D05           | Kiểm tra chất lượng nhãn                        | Tỷ lệ đồng thuận, danh sách sửa nhãn          |
-| D06           | Chia tập theo nhóm câu hỏi và Freeze Dataset v1 | splits, dataset_manifest.json                 |
-| M01           | Baseline TF IDF và BM25                         | Index, bảng Recall@k, MRR, NDCG@k             |
-| M02           | Đào hard negative và bàn giao                   | train_pairs.csv cho bi-encoder, cross-encoder |
+| **Giai đoạn** | **Công việc**                                         | **Đầu ra chính**                              |
+|---------------|-------------------------------------------------------|-----------------------------------------------|
+| S01           | Chốt phạm vi và danh sách nguồn                       | docs/scope.md, data/raw/source_list.csv       |
+| D01           | Thu thập tài liệu gốc                                 | data/raw/html hoặc pdf, raw_manifest.csv      |
+| D02           | Trích xuất, làm sạch và EDA kho tài liệu              | docs.jsonl, báo cáo chất lượng                |
+| D03           | Chia đoạn (chunking)                                  | chunks.jsonl có chunk_id ổn định              |
+| D04           | Viết câu hỏi phần mình, gán nhãn chéo (TV2 điều phối) | questions.csv, qrels.csv                      |
+| D05           | Kiểm tra chất lượng nhãn (TV2 chủ trì)                | Cohen kappa, danh sách sửa nhãn               |
+| D06           | Chia tập theo nhóm câu hỏi và Freeze Dataset v1       | splits, dataset_manifest.json                 |
+| M01           | Baseline TF IDF và BM25                               | Index, bảng Recall@k, MRR, NDCG@k             |
+| M02           | Đào hard negative và bàn giao                         | train_pairs.csv cho bi-encoder, cross-encoder |
 
 ## 2 Cấu trúc thư mục và nguyên tắc lưu
 
@@ -50,11 +51,9 @@ split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
 >
 > raw/raw_manifest.csv
 >
-> interim/documents.csv
+> interim/docs.jsonl
 >
-> processed/chunks.csv
->
-> processed/chunks_segmented.csv
+> processed/chunks.jsonl
 >
 > labels/questions.csv
 >
@@ -236,7 +235,7 @@ thị nguồn chính xác hơn.
 | Gần giống          | Có danh sách cặp thủ tục giống nhau trên 0,8 cosine TF IDF | Giữ cả hai; dùng cho phân tích tài liệu gần giống |
 | Hiệu lực           | Mọi căn cứ pháp lý đều còn hiệu lực                        | Thay bằng văn bản mới hoặc loại                   |
 
-**Output:** data/interim/documents.csv,
+**Output:** data/interim/docs.jsonl,
 results/data_quality/corpus_report.md,
 results/data_quality/near_duplicate_docs.csv.
 
@@ -262,21 +261,22 @@ nguyên văn nhưng đủ dài để tự đứng được.
 5.  Lưu chunk_text (dùng cho mô hình) và display_text (nguyên văn, dùng
     để hiển thị trích dẫn).
 
-| **Cột chunks.csv** | **Ý nghĩa**                              |
-|--------------------|------------------------------------------|
-| chunk_id           | Khóa chính, ổn định qua các phiên bản    |
-| doc_id, field      | Thuộc tài liệu nào, trường nào           |
-| chunk_text         | Có tiền tố ngữ cảnh, đã làm sạch         |
-| display_text       | Nguyên văn để trích dẫn                  |
-| url, accessed_at   | Nguồn tham chiếu hiển thị trên giao diện |
-| n_tokens           | Số token sau tách từ                     |
+| **Trường trong chunks.jsonl** | **Ý nghĩa**                                            |
+|-------------------------------|--------------------------------------------------------|
+| chunk_id                      | Khóa chính, ổn định qua các phiên bản                  |
+| doc_id, field                 | Thuộc tài liệu nào, trường nào                         |
+| chunk_text                    | Có tiền tố ngữ cảnh, đã làm sạch                       |
+| display_text                  | Nguyên văn để trích dẫn                                |
+| url, accessed_at              | Nguồn tham chiếu hiển thị trên giao diện               |
+| text_seg                      | chunk_text đã tách từ, dùng cho BM25 mức từ và PhoBERT |
+| n_tokens                      | Số token sau tách từ                                   |
 
 ### 6.1 Biến thể tách từ
 
-- chunks.csv giữ văn bản chưa tách từ, dùng cho Sentence-BERT đa ngôn
-  ngữ và BM25 mức âm tiết.
+- Trường chunk_text giữ văn bản chưa tách từ, dùng cho Sentence-BERT đa
+  ngôn ngữ và BM25 mức âm tiết.
 
-- chunks_segmented.csv tách từ bằng một công cụ duy nhất đã chốt
+- Trường text_seg tách từ bằng một công cụ duy nhất đã chốt
   (underthesea, pyvi hoặc VnCoreNLP), ghi tên và phiên bản vào
   preprocessing.yaml. PhoBERT yêu cầu đầu vào đã tách từ.
 
@@ -285,19 +285,20 @@ nguyên văn nhưng đủ dài để tự đứng được.
 
 ### 6.2 Kiểm tra tự động
 
-| **Assertion** | **Kỳ vọng**                                           |
-|---------------|-------------------------------------------------------|
-| chunk_id      | Duy nhất; cùng tập ID giữa chunks và chunks_segmented |
-| Bao phủ       | Mọi doc_id có ít nhất một chunk                       |
-| Rỗng          | 0 chunk rỗng                                          |
-| Độ dài        | Không chunk nào vượt ngưỡng token đã cấu hình         |
-| Tái lập       | Chạy hai lần cho cùng hash file đầu ra                |
+| **Assertion** | **Kỳ vọng**                                      |
+|---------------|--------------------------------------------------|
+| chunk_id      | Duy nhất; mọi chunk có cả chunk_text và text_seg |
+| Bao phủ       | Mọi doc_id có ít nhất một chunk                  |
+| Rỗng          | 0 chunk rỗng                                     |
+| Độ dài        | Không chunk nào vượt ngưỡng token đã cấu hình    |
+| Tái lập       | Chạy hai lần cho cùng hash file đầu ra           |
 
 ## 7 D04 Xây bộ câu hỏi và gán nhãn
 
-> **Đây là phần quan trọng nhất.** Mục tiêu khoảng 300 đến 500 câu hỏi,
-> mỗi câu gán một hoặc vài chunk đúng. Thà ít thủ tục mà nhiều câu hỏi
-> chất lượng, còn hơn nhiều thủ tục mà câu hỏi sơ sài.
+> **Đây là phần quan trọng nhất.** Mục tiêu khoảng 300 câu hỏi (5 người,
+> mỗi người khoảng 60 câu), mỗi câu gán một hoặc vài chunk đúng. Thà ít
+> thủ tục mà nhiều câu hỏi chất lượng, còn hơn nhiều thủ tục mà câu hỏi
+> sơ sài.
 
 ### 7.1 Quy trình viết câu hỏi
 
@@ -322,14 +323,15 @@ nguyên văn nhưng đủ dài để tự đứng được.
 
 ### 7.2 Phân loại câu hỏi theo yêu cầu phân tích của đề
 
-| **type**       | **Mô tả**                       | **Ví dụ**                                       | **Tỷ lệ gợi ý** |
-|----------------|---------------------------------|-------------------------------------------------|-----------------|
-| direct         | Hỏi gần sát tài liệu            | Đăng ký khai sinh cần những giấy tờ gì          | 25%             |
-| paraphrase     | Diễn đạt khác tài liệu          | Con mới sinh thì làm giấy tờ gì ở phường        | 25%             |
-| underspecified | Thiếu thông tin                 | Đăng ký mất bao lâu                             | 10%             |
-| multi_intent   | Nhiều ý trong một câu           | Kết hôn cần giấy gì và nộp ở đâu                | 10%             |
-| confusable     | Dễ nhầm giữa tài liệu gần giống | Vợ người nước ngoài thì đăng ký kết hôn thế nào | 15%             |
-| out_of_scope   | Ngoài phạm vi, phải từ chối     | Thủ tục tách thửa đất như thế nào               | 15%             |
+| **type**       | **Mô tả**                                       | **Ví dụ**                                       | **Tỷ lệ gợi ý** |
+|----------------|-------------------------------------------------|-------------------------------------------------|-----------------|
+| direct         | Hỏi gần sát tài liệu                            | Đăng ký khai sinh cần những giấy tờ gì          | 20%             |
+| paraphrase     | Diễn đạt khác tài liệu                          | Con mới sinh thì làm giấy tờ gì ở phường        | 25%             |
+| underspecified | Thiếu thông tin                                 | Đăng ký mất bao lâu                             | 10%             |
+| multi_intent   | Nhiều ý trong một câu                           | Kết hôn cần giấy gì và nộp ở đâu                | 10%             |
+| confusable     | Dễ nhầm giữa tài liệu gần giống                 | Vợ người nước ngoài thì đăng ký kết hôn thế nào | 15%             |
+| out_of_scope   | Ngoài phạm vi, phải từ chối                     | Thủ tục tách thửa đất như thế nào               | 10%             |
+| unsupported    | Trong phạm vi nhưng kho không có đáp án, dễ bịa | Đăng ký khai sinh trễ bị phạt bao nhiêu         | 10%             |
 
 ### 7.3 Định dạng file
 
@@ -338,7 +340,7 @@ nguyên văn nhưng đủ dài để tự đứng được.
 | question_id       | Mã câu hỏi, ví dụ Q0001                                            |
 | question_group_id | Nhóm câu gốc; các cách hỏi khác của cùng một ý có cùng group       |
 | question          | Nội dung câu hỏi                                                   |
-| type              | Một trong sáu loại ở bảng 7.2                                      |
+| type              | Một trong bảy loại ở bảng 7.2                                      |
 | answer_text       | Câu trả lời chuẩn ngắn, dùng tính exact match hoặc token F1 nếu có |
 | source            | human hoặc generated                                               |
 | annotator         | Người viết                                                         |
@@ -349,8 +351,8 @@ nguyên văn nhưng đủ dài để tự đứng được.
 | chunk_id      | Đoạn liên quan                                                   |
 | relevance     | 2 là trả lời trực tiếp, 1 là liên quan một phần; dùng cho NDCG@k |
 
-Câu hỏi out_of_scope không có dòng nào trong qrels. Hệ thống được tính
-đúng khi từ chối trả lời.
+Câu hỏi out_of_scope và unsupported không có dòng nào trong qrels. Hệ
+thống được tính đúng khi từ chối trả lời.
 
 ### 7.4 Hướng dẫn gán nhãn
 
@@ -365,11 +367,12 @@ Câu hỏi out_of_scope không có dòng nào trong qrels. Hệ thống được
 
 ## 8 D05 Kiểm tra chất lượng nhãn
 
-1.  Lấy ngẫu nhiên khoảng 50 câu hỏi, cho một thành viên khác gán nhãn
-    độc lập.
+1.  Người gán nhãn phải khác người viết câu hỏi. Lấy ngẫu nhiên khoảng
+    20% số câu cho hai người gán độc lập.
 
-2.  Tính tỷ lệ đồng thuận ở mức chunk đúng nhất (top relevant chunk
-    trùng nhau). Nếu dưới khoảng 80% thì sửa guideline và gán lại.
+2.  Tính Cohen kappa trên quyết định liên quan hay không của từng cặp
+    (câu hỏi, chunk). Kappa dưới khoảng 0,6 thì sửa guideline và gán
+    lại; các câu lệch nhau thì họp chốt. Đưa con số kappa vào báo cáo.
 
 3.  Loại câu hỏi trùng hoặc gần trùng trong cùng nhóm; câu trùng giữa
     hai nhóm khác nhau thì gộp nhóm.
@@ -388,11 +391,13 @@ results/data_quality/question_stats.csv.
 > chung một tập. Nếu câu gốc ở train mà câu diễn đạt lại ở test thì
 > cross-encoder học thuộc và chỉ số test cao giả.
 
-1.  Chia theo question_group_id với tỷ lệ gợi ý 60/20/20 cho train,
-    validation, test.
+1.  Chia theo question_group_id với tỷ lệ gợi ý 40/20/40 cho train,
+    validation, test (khoảng 120/60/120 câu). Train dùng để fine-tune
+    PhoBERT hoặc cross-encoder; nếu nhóm không fine-tune thì gộp train
+    vào test.
 
-2.  Stratify theo type để tập nào cũng có đủ sáu loại, đặc biệt là
-    out_of_scope.
+2.  Stratify theo type để tập nào cũng có đủ bảy loại, đặc biệt là
+    out_of_scope và unsupported.
 
 3.  Dùng seed cố định, ví dụ 42, ghi vào configs/split.yaml.
 
@@ -410,11 +415,12 @@ chia.
 
 - chunk_id ổn định, tests chunking pass.
 
-- Mỗi question_id hợp lệ có ít nhất một dòng qrels, trừ out_of_scope.
+- Mỗi question_id hợp lệ có ít nhất một dòng qrels, trừ out_of_scope và
+  unsupported.
 
-- Mọi chunk_id trong qrels tồn tại trong chunks.csv.
+- Mọi chunk_id trong qrels tồn tại trong chunks.jsonl.
 
-- Đã kiểm tra đồng thuận nhãn và sửa guideline nếu cần.
+- Đã tính Cohen kappa và sửa guideline nếu cần.
 
 - Split theo nhóm, không có question_group_id xuất hiện ở hai tập.
 
@@ -455,9 +461,8 @@ chia.
 - Lập chỉ mục trên toàn bộ chunks. Không cần fit trên train vì baseline
   không học từ câu hỏi; chỉ chọn tham số trên validation.
 
-- Thử hai mức token: âm tiết (chunks.csv) và từ đã tách
-  (chunks_segmented.csv). Câu hỏi phải tách từ bằng đúng công cụ đã dùng
-  cho chunk.
+- Thử hai mức token: âm tiết (chunk_text) và từ đã tách (text_seg). Câu
+  hỏi phải tách từ bằng đúng công cụ đã dùng cho chunk.
 
 - TF IDF: thử n gram 1 đến 2, sublinear_tf, cosine similarity.
 
@@ -480,8 +485,9 @@ vị trí chunk đúng đầu tiên:
 - Báo cáo k = 1, 3, 5, 10. Tách bảng theo type để có sẵn số liệu cho
   phần phân tích bắt buộc.
 
-- Với out_of_scope: chọn ngưỡng điểm trên validation; dưới ngưỡng thì từ
-  chối. Báo tỷ lệ từ chối đúng và tỷ lệ từ chối nhầm câu hợp lệ.
+- Với out_of_scope và unsupported: chọn ngưỡng điểm trên validation;
+  dưới ngưỡng thì từ chối. Báo tỷ lệ từ chối đúng và tỷ lệ từ chối nhầm
+  câu hợp lệ.
 
 ### 10.3 Bảng kết quả mẫu cần nộp
 
@@ -542,14 +548,14 @@ vị trí chunk đúng đầu tiên:
 
 - source_list.csv và raw_manifest.csv đầy đủ URL, ngày tải, sha256.
 
-- documents.csv có đủ các trường; báo cáo chất lượng kho tài liệu.
+- docs.jsonl có đủ các trường; báo cáo chất lượng kho tài liệu.
 
-- chunks.csv và chunks_segmented.csv cùng tập chunk_id; tests pass.
+- chunks.jsonl có chunk_text, text_seg, display_text; tests pass.
 
-- questions.csv, qrels.csv, annotation_guideline.md; đủ sáu loại câu
+- questions.csv, qrels.csv, annotation_guideline.md; đủ bảy loại câu
   hỏi.
 
-- Báo cáo đồng thuận nhãn.
+- Báo cáo Cohen kappa.
 
 - Split theo question_group_id, test được khóa.
 
@@ -572,7 +578,7 @@ vị trí chunk đúng đầu tiên:
 | Chunk không có tiền tố ngữ cảnh       | Truy hồi đúng đoạn nhưng sai thủ tục | Thêm tên thủ tục và tên trường vào chunk_text |
 | chunk_id theo số dòng                 | Đổi chunking là mất toàn bộ nhãn     | ID ghép từ doc_id, trường, số thứ tự          |
 | Dùng văn bản hết hiệu lực             | Trả lời sai thực tế                  | Ghi ngày tải, kiểm tra hiệu lực               |
-| Không có câu ngoài phạm vi            | Không đo được tỷ lệ từ chối hợp lý   | 10 đến 15% câu out_of_scope                   |
+| Không có câu ngoài phạm vi            | Không đo được tỷ lệ từ chối hợp lý   | Khoảng 10% out_of_scope và 10% unsupported    |
 | Chọn ngưỡng trên test                 | Kết quả test không còn khách quan    | Chọn trên validation                          |
 
 ## 15 Lệnh kiểm tra nhanh cuối mỗi giai đoạn

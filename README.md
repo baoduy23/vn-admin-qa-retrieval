@@ -13,6 +13,18 @@ tài liệu gốc → làm sạch → chia đoạn → lập chỉ mục → tru
                                     (baseline)     (SBERT)      (PhoBERT pair)
 ```
 
+## Phân công
+
+| | Vai trò | Phụ trách chính |
+|---|---|---|
+| TV1 | Dữ liệu và baseline | Phạm vi, thu thập, làm sạch, chunking, freeze Dataset v1, TF-IDF/BM25, hard negatives |
+| TV2 | Bộ test và đánh giá | Guideline gán nhãn, điều phối gán nhãn chéo, kappa, split, script đánh giá chung, phân tích lỗi |
+| TV3 | Truy hồi dense | SBERT bi-encoder, hybrid, câu hỏi tương tự |
+| TV4 | Rerank và trả lời | Cross-encoder / PhoBERT pair, template trả lời, ngưỡng từ chối |
+| TV5 | App và báo cáo | Streamlit, SQLite lịch sử + thống kê, deploy, báo cáo và slide |
+
+Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác. Chi tiết: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
+
 ## Tiến độ
 
 Theo dõi ở tab **Issues** (mỗi giai đoạn một issue) và **Milestones**:
@@ -29,8 +41,8 @@ Theo dõi ở tab **Issues** (mỗi giai đoạn một issue) và **Milestones**
 
 ```
 data/raw/          tài liệu gốc, bất biến
-data/interim/      documents.csv đã làm sạch
-data/processed/    chunks.csv, chunks_segmented.csv
+data/interim/      docs.jsonl đã làm sạch
+data/processed/    chunks.jsonl (chunk_text, text_seg, display_text)
 data/labels/       questions.csv, qrels.csv, annotation_guideline.md
 data/splits/       question_group_id của train / validation / test
 configs/           cấu hình tiền xử lý, chunking, baseline, split
@@ -54,6 +66,7 @@ python -m pytest
 ## Tài liệu
 
 - [Đề bài](docs/de-bai.md)
+- [Lộ trình và phân công](docs/lo-trinh-va-phan-cong.md)
 - [Phạm vi](docs/scope.md)
 - [Hướng dẫn Thành viên 1: từ chốt phạm vi đến Dataset v1 và baseline](docs/huong-dan-thanh-vien-1.md) ([bản Word](docs/files/Huong_dan_Thanh_vien_1_De_tai_10_Dataset_v1.docx))
 

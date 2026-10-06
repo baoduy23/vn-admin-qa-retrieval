@@ -1,4 +1,4 @@
 group_by: question_group_id
-stratify_by: type
-ratios: {train: 0.6, validation: 0.2, test: 0.2}
+stratify_by: type             # 7 loại, gồm out_of_scope và unsupported
+ratios: {train: 0.4, validation: 0.2, test: 0.4}   # ~120 / 60 / 120 câu
 random_seed: 42
