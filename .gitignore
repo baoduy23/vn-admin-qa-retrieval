@@ -11,3 +11,4 @@ data/raw/pdf/
 *.pt
 *.bin
 *.safetensors
+~$*
