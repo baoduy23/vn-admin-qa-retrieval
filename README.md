@@ -15,15 +15,17 @@ tài liệu gốc → làm sạch → chia đoạn → lập chỉ mục → tru
 
 ## Phân công
 
-| | Vai trò | Phụ trách chính |
-|---|---|---|
-| TV1: Duy| Dữ liệu + baseline |
-| TV2: Khang | Bộ test và đánh giá |
-| TV3 | Mô hình truy hồi | 
-| TV4 | Trả lời + web | 
-| TV5 | Slide + báo cáo | 
+Chi tiết từng việc nằm trong [file phân công trên Google Docs](https://docs.google.com/document/d/1ZMDBBBsTeBdehL9hAiG091OWIV-9r98egQ3ygFb-t5o/edit).
 
-Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác. Chi tiết: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
+| | Người | Vai trò | Phụ trách chính | Bàn giao cho |
+|---|---|---|---|---|
+| TV1 | Duy | Dữ liệu + baseline | Chốt danh sách thủ tục hộ tịch (1 cấp, có URL + ngày lấy); crawl, làm sạch, chia đoạn có tiền tố "tên thủ tục \| mục", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 và TV4 (hard negative) |
+| TV2 | Khang | Bộ test + đánh giá | Guideline gán nhãn (7 loại câu, relevance 2/1); chia người viết và người gán nhãn; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi; 1 script đánh giá chung (Recall@k, MRR, NDCG, tỷ lệ từ chối); chỉ số câu trả lời (F1, đúng nguồn, faithfulness); trưởng phần phân tích lỗi | Cả nhóm (script đánh giá, split) |
+| TV3 | | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
+| TV4 | | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
+| TV5 | | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
+
+Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác, không tự gán nhãn câu mình viết. Ai làm phần nào viết phần đó trong báo cáo. Lộ trình: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
 
 ## Tiến độ
 
