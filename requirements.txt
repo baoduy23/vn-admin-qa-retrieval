@@ -2,10 +2,6 @@ pandas>=2.0
 pyyaml>=6.0
 scikit-learn>=1.3
 underthesea>=6.8
-requests>=2.31
-beautifulsoup4>=4.12
-lxml>=5.0
-playwright>=1.45         # sau khi cài: python -m playwright install chromium
 matplotlib>=3.8
 pytest>=8.0
 # Mô hình cải tiến (cài khi tới M3):

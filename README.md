@@ -71,15 +71,15 @@ python -m pytest
 
 ## Pipeline dữ liệu (TV1)
 
-```bash
-python -m playwright install chromium
-python -m src.data.crawl    # D01: source_list.csv → data/raw/html + raw_manifest.csv
-python -m src.data.parse    # D02: → data/interim/docs.jsonl
-python -m src.data.chunk    # D03: → data/processed/chunks.jsonl
-python -m src.data.eda      # → results/data_quality/corpus_report.md + figures/
+Nguồn: văn bản luật tải tay từ vbpl.vn (xem [docs/scope.md](docs/scope.md)), không cào web.
+
+```
+data/raw/        file gốc tải về (.doc, .PDF), không sửa
+data/interim/    bản .docx đọc được
+data/processed/  chunks.jsonl: 1 Điều = 1 đoạn, Điều dài quá 200 từ thì tách theo Khoản
 ```
 
-Chi tiết: [docs/huong-dan-cao-du-lieu.md](docs/huong-dan-cao-du-lieu.md).
+Bước tách Điều/Khoản đang làm thử trong `notebooks/01_doc_luat.ipynb`, chạy ổn thì chuyển thành script trong `src/data/`.
 
 ## Tài liệu
 
@@ -87,7 +87,6 @@ Chi tiết: [docs/huong-dan-cao-du-lieu.md](docs/huong-dan-cao-du-lieu.md).
 - [Lộ trình và phân công](docs/lo-trinh-va-phan-cong.md)
 - [Hướng dẫn Git cho cả nhóm](docs/huong-dan-git.md): cài đặt, tạo nhánh, commit, mở Pull Request
 - [Phạm vi](docs/scope.md)
-- [Hướng dẫn D01–D03: crawl, làm sạch, chunk, báo cáo](docs/huong-dan-cao-du-lieu.md)
 - [Hướng dẫn Thành viên 1: từ chốt phạm vi đến Dataset v1 và baseline](docs/huong-dan-thanh-vien-1.md) ([bản Word](docs/files/Huong_dan_Thanh_vien_1_De_tai_10_Dataset_v1.docx))
 
 ## Quy ước làm việc
