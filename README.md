@@ -19,7 +19,7 @@ Chi tiết từng việc nằm trong [file phân công trên Google Docs](https:
 
 | | Người | Vai trò | Phụ trách chính | Bàn giao cho |
 |---|---|---|---|---|
-| TV1 | Duy | Dữ liệu + baseline | Chốt danh sách thủ tục hộ tịch (1 cấp, có URL + ngày lấy); crawl, làm sạch, chia đoạn có tiền tố "tên thủ tục \| mục", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 và TV4 (hard negative) |
+| TV1 | Duy | Dữ liệu + baseline | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản, làm sạch, chia đoạn có tiền tố "tên văn bản \| Điều", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 (hard negative) |
 | TV2 | Khang | Bộ test + đánh giá | Guideline gán nhãn (7 loại câu, relevance 2/1); chia người viết và người gán nhãn; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi; 1 script đánh giá chung (Recall@k, MRR, NDCG, tỷ lệ từ chối); chỉ số câu trả lời (F1, đúng nguồn, faithfulness); trưởng phần phân tích lỗi | Cả nhóm (script đánh giá, split) |
 | TV3 | | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
 | TV4 | | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
@@ -33,7 +33,7 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 
 | Milestone | Phụ trách | Nội dung | Phụ thuộc |
 |---|---|---|---|
-| M1 Kho dữ liệu | TV1 Duy | Chốt danh sách thủ tục hộ tịch (URL + ngày lấy); crawl, làm sạch, chia đoạn có tiền tố, tách từ | |
+| M1 Kho dữ liệu | TV1 Duy | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản, làm sạch, chia đoạn có tiền tố, tách từ | |
 | M2 Bộ test | TV2 Khang | Guideline gán nhãn 7 loại câu; phân công viết và gán nhãn chéo (~60 câu/người); Cohen's kappa; chia train/dev/test theo nhóm câu hỏi | Câu hỏi viết được ngay; gán nhãn cần M1 |
 | M3 Baseline + Dataset v1 | TV1 Duy | Freeze dataset; TF-IDF, BM25; hard negative từ top-20 BM25 | M1, M2, script đánh giá của TV2 |
 | M4 Đánh giá chung | TV2 Khang | Script đánh giá dùng chung: Recall@k, MRR, NDCG, tỷ lệ từ chối; chỉ số câu trả lời: F1, đúng nguồn, faithfulness | Làm song song, cần xong trước khi chạy mô hình |
@@ -44,13 +44,13 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 ## Cấu trúc thư mục
 
 ```
-data/raw/          tài liệu gốc, bất biến
-data/interim/      docs.jsonl đã làm sạch
-data/processed/    chunks.jsonl (chunk_text, text_seg, display_text)
+data/raw/          văn bản gốc (.doc, .pdf, .html), bất biến
+data/interim/      bản .docx để code đọc
+data/processed/    chunks.jsonl (text, text_seg, display_text)
 data/labels/       questions.csv, qrels.csv, annotation_guideline.md
 data/splits/       question_group_id của train / validation / test
 configs/           cấu hình tiền xử lý, chunking, baseline, split
-src/data/          thu thập, trích xuất, làm sạch, chunking, split
+src/data/          làm sạch, tách luật, chunking, split
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
 src/app/           giao diện hỏi đáp
 tests/             pytest
@@ -71,10 +71,10 @@ python -m pytest
 
 ## Pipeline dữ liệu (TV1)
 
-Nguồn: văn bản luật tải tay từ vbpl.vn (xem [docs/scope.md](docs/scope.md)), không cào web.
+Nguồn: Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP, tải tay từ vbpl.vn; văn bản nào vbpl hoặc vanban.chinhphu.vn chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn. Không cào web. Danh sách đầy đủ ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
 
 ```
-data/raw/        file gốc tải về (.doc, .PDF), không sửa
+data/raw/        file gốc tải về (.doc, .pdf, .html trang TVPL), không sửa
 data/interim/    bản .docx đọc được
 data/processed/  chunks.jsonl: 1 Điều = 1 đoạn, Điều dài quá 200 từ thì tách theo Khoản
 ```

@@ -9,18 +9,20 @@ hoặc học vụ
 đoạn, freeze Dataset v1 và baseline TF IDF, BM25. Bộ câu hỏi do cả nhóm
 viết, Thành viên 2 điều phối (xem file Lộ trình và phân công)
 
-**Phạm vi mặc định:** lĩnh vực hộ tịch (có thể đổi sang học vụ UEH, xem
-mục 3)
+**Phạm vi đã chốt:** lĩnh vực hộ tịch. Kho gồm Luật Hộ tịch
+60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP (xem
+docs/scope.md). Tải tay từ vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn
+văn trên thuvienphapluat.vn. Không cào web.
 
 **Repository:** repo này
 
-**Đầu ra bắt buộc:** Dataset v1 gồm documents, chunks, questions, qrels,
-split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
+**Đầu ra bắt buộc:** Dataset v1 gồm văn bản gốc, chunks, questions,
+qrels, split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
 
-> **Kết luận quan trọng.** Không mở rộng sang toàn bộ thủ tục dân sự.
-> Làm trọn một lĩnh vực, rồi dồn công vào bộ câu hỏi có gán đoạn đúng.
-> Mọi chỉ số Recall@k, MRR, NDCG@k và việc huấn luyện cross-encoder đều
-> phụ thuộc vào bộ câu hỏi này, không phụ thuộc vào số lượng thủ tục.
+> **Kết luận quan trọng.** Làm trọn một lĩnh vực, rồi dồn công vào bộ
+> câu hỏi có gán đoạn đúng. Mọi chỉ số Recall@k, MRR, NDCG@k và việc
+> huấn luyện cross-encoder đều phụ thuộc vào bộ câu hỏi này, không phụ
+> thuộc vào số lượng văn bản.
 >
 > **Phạm vi tài liệu.** Tài liệu mô tả tuần tự các bước S01 đến D06 cho
 > dữ liệu, M01 đến M02 cho baseline và chuẩn bị dữ liệu cho mô hình cải
@@ -29,69 +31,49 @@ split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
 
 ## 1 Tổng quan trách nhiệm của Thành viên 1
 
-| **Giai đoạn** | **Công việc**                                         | **Đầu ra chính**                              |
-|---------------|-------------------------------------------------------|-----------------------------------------------|
-| S01           | Chốt phạm vi và danh sách nguồn                       | docs/scope.md, data/raw/source_list.csv       |
-| D01           | Thu thập tài liệu gốc                                 | data/raw/html hoặc pdf, raw_manifest.csv      |
-| D02           | Trích xuất, làm sạch và EDA kho tài liệu              | docs.jsonl, báo cáo chất lượng                |
-| D03           | Chia đoạn (chunking)                                  | chunks.jsonl có chunk_id ổn định              |
-| D04           | Viết câu hỏi phần mình, gán nhãn chéo (TV2 điều phối) | questions.csv, qrels.csv                      |
-| D05           | Kiểm tra chất lượng nhãn (TV2 chủ trì)                | Cohen kappa, danh sách sửa nhãn               |
-| D06           | Chia tập theo nhóm câu hỏi và Freeze Dataset v1       | splits, dataset_manifest.json                 |
-| M01           | Baseline TF IDF và BM25                               | Index, bảng Recall@k, MRR, NDCG@k             |
-| M02           | Đào hard negative và bàn giao                         | train_pairs.csv cho bi-encoder, cross-encoder |
+| **Giai đoạn** | **Công việc**                                         | **Đầu ra chính**                                   |
+|---------------|-------------------------------------------------------|----------------------------------------------------|
+| S01           | Chốt phạm vi và danh sách văn bản                     | docs/scope.md, data/raw/source_list.csv            |
+| D01           | Tải văn bản gốc (vbpl.vn, thuvienphapluat.vn)         | data/raw/ (.doc, .pdf, .html), .docx trong interim/ |
+| D02           | Tách cấu trúc Chương, Điều, Khoản; làm sạch; EDA      | bảng Điều/Khoản, báo cáo chất lượng                |
+| D03           | Chia đoạn (chunking)                                  | chunks.jsonl có chunk_id ổn định                   |
+| D04           | Viết câu hỏi phần mình, gán nhãn chéo (TV2 điều phối) | questions.csv, qrels.csv                           |
+| D05           | Kiểm tra chất lượng nhãn (TV2 chủ trì)                | Cohen kappa, danh sách sửa nhãn                    |
+| D06           | Chia tập theo nhóm câu hỏi và Freeze Dataset v1       | splits, dataset_manifest.json                      |
+| M01           | Baseline TF IDF và BM25                               | Index, bảng Recall@k, MRR, NDCG@k                  |
+| M02           | Đào hard negative và bàn giao                         | train_pairs.csv cho bi-encoder, cross-encoder      |
 
 ## 2 Cấu trúc thư mục và nguyên tắc lưu
 
-> data/
->
-> raw/source_list.csv
->
-> raw/html/\<doc_id\>.html \# hoặc raw/pdf/\<doc_id\>.pdf
->
-> raw/raw_manifest.csv
->
-> interim/docs.jsonl
->
-> processed/chunks.jsonl
->
-> labels/questions.csv
->
-> labels/qrels.csv
->
-> labels/annotation_guideline.md
->
-> splits/train_qgroups.csv
->
-> splits/validation_qgroups.csv
->
-> splits/test_qgroups.csv
->
-> configs/
->
-> preprocessing.yaml
->
-> chunking.yaml
->
-> retrieval_baseline.yaml
->
-> src/data/ \# crawl, extract, clean, chunk, build_splits
->
-> src/retrieval/ \# tfidf, bm25, evaluate
->
-> tests/
->
-> results/data_quality/
->
-> results/retrieval/
->
-> artifacts/ \# index, vectorizer
+```
+data/
+  raw/source_list.csv          danh sách văn bản: số hiệu, tên, url, ngày tải
+  raw/<so_hieu>.doc/.pdf/.html file gốc (vbpl.vn, vanban.chinhphu.vn, TVPL)
+  interim/<so_hieu>.docx       bản .docx để code đọc
+  processed/chunks.jsonl
+  labels/questions.csv
+  labels/qrels.csv
+  labels/annotation_guideline.md
+  splits/train_qgroups.csv
+  splits/validation_qgroups.csv
+  splits/test_qgroups.csv
+configs/
+  preprocessing.yaml
+  chunking.yaml
+  retrieval_baseline.yaml
+notebooks/                     thử nghiệm (ví dụ 01_doc_luat.ipynb)
+src/data/                      text_utils (làm sạch, normalize_tone), script tách luật
+src/retrieval/                 tfidf, bm25, evaluate
+tests/
+results/data_quality/
+results/retrieval/
+artifacts/                     index, vectorizer
+```
 
-- data/raw: bản gốc tải về, bất biến. Không sửa bằng tay, không ghi đè,
-  luôn kèm URL và ngày tải.
+- data/raw: bản gốc tải về, bất biến. Không sửa bằng tay, không ghi đè.
+  URL và ngày tải ghi trong source_list.csv.
 
-- data/interim: văn bản đã trích xuất và làm sạch, mỗi dòng là một tài
-  liệu (một thủ tục hoặc một điều khoản quy chế).
+- data/interim: bản .docx chuyển từ file gốc, đọc được bằng code.
 
 - data/processed: các đoạn dùng để lập chỉ mục. Mọi mô hình truy hồi
   dùng chung file này.
@@ -102,169 +84,160 @@ split theo nhóm câu hỏi, báo cáo chất lượng và kết quả baseline
 - data/splits: chỉ lưu question_group_id của từng tập, không sao chép dữ
   liệu.
 
+- Code thử trong notebooks/ trước, chạy ổn thì chuyển thành script trong
+  src/data/ để cả nhóm chạy lại được bằng một lệnh.
+
 ## 3 S01 Chốt phạm vi và nguồn tài liệu
 
-### 3.1 Vì sao không lấy toàn bộ thủ tục dân sự
+### 3.1 Vì sao chỉ làm một lĩnh vực
 
-- Mỗi thủ tục thêm vào kéo theo hàng chục câu hỏi phải viết và gán nhãn.
-  Số thủ tục tăng thì công gán nhãn tăng theo, trong khi thời gian dự án
-  không đổi.
+- Mỗi văn bản thêm vào kéo theo hàng chục câu hỏi phải viết và gán nhãn.
+  Kho tăng thì công gán nhãn tăng theo, trong khi thời gian dự án không
+  đổi.
 
 - Lấy rải rác nhiều lĩnh vực (hộ tịch, đất đai, cư trú) thì lĩnh vực nào
   cũng mỏng, hỏi sâu là hệ thống trả lời sai, và phần phân tích lỗi
   không có gì để nói.
 
-- Đất đai có luật riêng, quy trình dài và nhiều trường hợp đặc thù,
-  không hợp với dự án ngắn. Đưa vào mục hướng phát triển.
+- Đất đai, cư trú, thuế dùng làm câu hỏi ngoài phạm vi (out_of_scope).
 
-### 3.2 Hai lựa chọn phạm vi
+### 3.2 Quyết định của nhóm
 
-| **Tiêu chí**       | **Hộ tịch (mặc định)**                                                 | **Học vụ UEH**                                                |
-|--------------------|------------------------------------------------------------------------|---------------------------------------------------------------|
-| Nguồn              | Cổng Dịch vụ công quốc gia, văn bản pháp luật về hộ tịch               | Quy chế đào tạo, quy định học vụ, sổ tay sinh viên của trường |
-| Cấu trúc tài liệu  | Rất đều: trình tự, cách thức, hồ sơ, thời hạn, cơ quan, lệ phí, căn cứ | Theo chương, điều, khoản                                      |
-| Viết câu hỏi       | Phải đóng vai người dân                                                | Nhóm là sinh viên, tự viết câu hỏi thật                       |
-| Tài liệu gần giống | Có sẵn, ví dụ khai sinh thường và khai sinh có yếu tố nước ngoài       | Có, ví dụ bảo lưu, tạm dừng học, thôi học                     |
-| Rủi ro             | Văn bản thay đổi sau sắp xếp chính quyền hai cấp từ 01/7/2025          | Quy chế có thể có nhiều phiên bản theo khóa                   |
+| **Mục**           | **Đã chốt**                                                                 |
+|-------------------|-----------------------------------------------------------------------------|
+| Lĩnh vực          | Hộ tịch                                                                     |
+| Nguồn             | vbpl.vn; thuvienphapluat.vn khi văn bản chỉ có PDF scan                       |
+| Cách lấy          | Tải tay file .doc và PDF bản gốc, không cào web                             |
+| Văn bản trong kho | Luật 60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP         |
+| Cấu trúc tài liệu | Chương, (Mục), Điều, Khoản, Điểm                                             |
+| Viết câu hỏi      | Đóng vai người dân hỏi về đăng ký khai sinh, kết hôn, khai tử, cải chính... |
 
-> **Quyết định.** Nhóm chọn một trong hai và ghi vào docs/scope.md. Phần
-> còn lại của tài liệu dùng hộ tịch làm ví dụ; nếu chọn học vụ thì thay
-> "thủ tục" bằng "điều khoản quy chế", quy trình giữ nguyên.
+### 3.3 Mở rộng kho (nếu cần)
 
-### 3.3 Danh sách thủ tục hộ tịch gợi ý
+- Chi tiết hồ sơ, giấy tờ, cách làm từng trường hợp thường nằm ở nghị
+  định và thông tư hướng dẫn, nên kho đã có Nghị định 123/2015 và Thông
+  tư 04/2020. Chỉ thêm văn bản khác khi bộ câu hỏi cần mà 3 văn bản này
+  không có đáp án.
 
-- Đăng ký khai sinh; khai sinh có yếu tố nước ngoài; đăng ký lại khai
-  sinh.
+- Trước khi thêm, xem tab hiệu lực trên vbpl.vn: chỉ lấy văn bản còn
+  hiệu lực tại ngày tải, ghi văn bản sửa đổi nếu có.
 
-- Đăng ký kết hôn; kết hôn có yếu tố nước ngoài; cấp giấy xác nhận tình
-  trạng hôn nhân.
-
-- Đăng ký khai tử; đăng ký lại khai tử.
-
-- Thay đổi, cải chính, bổ sung thông tin hộ tịch; xác định lại dân tộc.
-
-- Nhận cha, mẹ, con; đăng ký giám hộ và chấm dứt giám hộ.
-
-- Cấp bản sao trích lục hộ tịch; ghi vào sổ hộ tịch việc hộ tịch đã giải
-  quyết ở nước ngoài.
-
-Lấy đủ các thủ tục thuộc lĩnh vực Hộ tịch trên Cổng Dịch vụ công quốc
-gia (lọc theo lĩnh vực), không chỉ danh sách trên. Báo cáo được ghi là
-bao phủ toàn bộ lĩnh vực hộ tịch.
+- Không lấy bài tổng hợp trên blog hay diễn đàn làm tài liệu gốc.
 
 ### 3.4 File source_list.csv
 
-| **Cột**       | **Ý nghĩa**                                                            |
-|---------------|------------------------------------------------------------------------|
-| doc_id        | Mã ổn định do nhóm đặt, ví dụ HT_KHAISINH_01; không đổi về sau         |
-| title         | Tên thủ tục hoặc tên điều khoản                                        |
-| source_type   | dvc_portal, legal_text, school_regulation                              |
-| url           | Đường dẫn gốc                                                          |
-| issuing_level | Cấp thực hiện, ví dụ cấp xã, cấp tỉnh                                  |
-| legal_basis   | Văn bản căn cứ, ví dụ Luật Hộ tịch 2014 và nghị định hướng dẫn         |
-| accessed_at   | Ngày tải, định dạng YYYY-MM-DD                                         |
-| in_scope      | yes hoặc no; tài liệu ngoài phạm vi vẫn ghi lại để làm câu hỏi từ chối |
+| **Cột**       | **Ý nghĩa**                                                         |
+|---------------|---------------------------------------------------------------------|
+| doc_id        | Số hiệu viết không dấu, ví dụ 60.2014.QH13, 123.2015.ND-CP; không đổi về sau |
+| title         | Tên văn bản, ví dụ Luật Hộ tịch                                     |
+| source_type   | legal_text                                                          |
+| url           | Đường dẫn trang văn bản đã lấy chữ (vbpl.vn hoặc thuvienphapluat.vn) |
+| issuing_level | Cơ quan ban hành: Quốc hội, Chính phủ, Bộ Tư pháp                   |
+| legal_basis   | Văn bản sửa đổi, bổ sung (nếu có)                                   |
+| accessed_at   | Ngày tải, định dạng YYYY-MM-DD                                      |
+| in_scope      | yes hoặc no; văn bản ngoài phạm vi vẫn ghi lại để làm câu hỏi từ chối |
 
-> **Lưu ý hiệu lực.** Chỉ dùng phiên bản đang có hiệu lực tại ngày tải.
-> Không lấy bài tổng hợp trên blog hay diễn đàn làm tài liệu gốc vì có
-> thể đã lỗi thời sau khi bỏ cấp huyện. Kiểm tra hiệu lực văn bản trước
-> khi đưa vào kho.
+## 4 D01 Tải văn bản gốc
 
-## 4 D01 Thu thập tài liệu gốc
+1.  Mở trang văn bản trên vbpl.vn, kiểm tra tình trạng hiệu lực.
 
-1.  Với mỗi dòng in_scope = yes trong source_list.csv, tải trang hoặc
-    file gốc về data/raw, đặt tên theo doc_id.
+2.  Tải file gốc (.doc và PDF nếu có) về data/raw, đặt tên theo số hiệu.
+    Không đổi tên hay sửa nội dung file gốc.
 
-2.  Ghi raw_manifest.csv gồm doc_id, url, file_path, sha256, bytes,
-    http_status, accessed_at.
+    Nếu chỉ có PDF scan (ví dụ file .signed.pdf của vanban.chinhphu.vn:
+    chuyển sang text chỉ ra dòng "Ký bởi..." của chữ ký số), thì vẫn giữ
+    file scan trong data/raw để đối chiếu, rồi mở văn bản trên
+    thuvienphapluat.vn: Ctrl+S lưu trang thành data/raw/<so_hieu>.html,
+    và copy phần toàn văn (dán vào Word chọn Keep Text Only) để làm bản
+    .docx. Không cào TVPL bằng code.
 
-3.  Đặt độ trễ giữa các lần tải, tôn trọng robots.txt và điều khoản sử
-    dụng của trang. Nếu trang không cho tải tự động thì lưu thủ công và
-    ghi rõ trong manifest.
+3.  Chuyển .doc sang .docx (Word: Save As, hoặc LibreOffice) và lưu vào
+    data/interim. Code chỉ đọc bản .docx.
 
-4.  Mở thủ công ít nhất 5 file ngẫu nhiên để chắc chắn tải đúng nội
-    dung, không phải trang lỗi hay trang đăng nhập.
+4.  Ghi một dòng vào source_list.csv: url, ngày tải. Tải bản mới thì lưu
+    thành file mới, không ghi đè.
 
-**Input:** data/raw/source_list.csv. **Output:** data/raw/html hoặc pdf,
-data/raw/raw_manifest.csv.
+5.  Mở bản .docx kiểm tra: đủ số Điều, không mất bảng, không lẫn chú
+    thích hay header trang.
 
-**Không được:** sửa file gốc, tải lại đè lên file cũ mà không ghi sha256
-mới.
+**Input:** trang văn bản trên vbpl.vn hoặc thuvienphapluat.vn. **Output:** data/raw/,
+data/interim/, data/raw/source_list.csv.
 
-## 5 D02 Trích xuất, làm sạch và EDA kho tài liệu
+## 5 D02 Tách cấu trúc, làm sạch và EDA
 
-### 5.1 Trích xuất theo trường
+### 5.1 Tách theo cấu trúc văn bản luật
 
-Thủ tục hành chính có cấu trúc cố định. Trích từng trường thành cột
-riêng thay vì gộp thành một khối văn bản; việc này giúp chunking và hiển
-thị nguồn chính xác hơn.
+Văn bản luật có cấu trúc cố định. Tách thành từng đơn vị có địa chỉ rõ
+ràng thay vì gộp thành một khối văn bản; việc này giúp chunking và hiển
+thị nguồn (Điều mấy, khoản mấy) chính xác hơn.
 
-| **Trường**       | **Ví dụ nội dung**                         | **Câu hỏi thường gặp** |
-|------------------|--------------------------------------------|------------------------|
-| trinh_tu         | Các bước nộp, tiếp nhận, giải quyết        | Làm như thế nào        |
-| cach_thuc        | Trực tiếp, trực tuyến, bưu chính           | Nộp online được không  |
-| thanh_phan_ho_so | Tờ khai, giấy tờ tùy thân, giấy chứng sinh | Cần mang giấy gì       |
-| thoi_han         | Số ngày làm việc                           | Bao lâu thì có kết quả |
-| doi_tuong        | Người yêu cầu đăng ký                      | Ai được nộp thay       |
-| co_quan          | Cơ quan thực hiện                          | Nộp ở đâu              |
-| le_phi           | Mức phí, trường hợp miễn                   | Tốn bao nhiêu tiền     |
-| can_cu_phap_ly   | Luật, nghị định, thông tư                  | Quy định ở văn bản nào |
+| **Trường**  | **Ví dụ**                                        |
+|-------------|--------------------------------------------------|
+| doc_id      | 60.2014.QH13                                     |
+| chuong      | Chương II. Đăng ký hộ tịch tại Ủy ban nhân dân cấp xã |
+| dieu        | 16                                               |
+| tieu_de     | Thủ tục đăng ký khai sinh                        |
+| khoan       | 1, 2, 3... (để trống nếu Điều không chia khoản)  |
+| noi_dung    | Nguyên văn nội dung Điều hoặc Khoản              |
+
+Nhận diện bằng mẫu đầu dòng: "Chương", "Mục", "Điều <số>.", "<số>." cho
+khoản, "<chữ cái>)" cho điểm.
 
 ### 5.2 Làm sạch văn bản
 
-- Chuẩn hóa Unicode về NFC; loại HTML tag, ký tự điều khiển, khoảng
-  trắng thừa.
+- Chuẩn hóa Unicode về NFC và thống nhất kiểu bỏ dấu (hoà → hòa, huỷ →
+  hủy) bằng `normalize_tone` trong src/data/text_utils.py. Câu hỏi người
+  dùng cũng phải qua đúng hàm này.
 
-- Loại phần điều hướng, menu, chân trang của cổng thông tin. Rule loại
-  phải cụ thể và được log số lần tác động.
+- Loại header, footer, số trang, phần chữ ký và nơi nhận ở cuối văn bản.
+  Rule loại phải cụ thể và được log số lần tác động.
 
-- Giữ nguyên số liệu, ngày, số hiệu văn bản (ví dụ 123/2015/NĐ-CP), tên
-  cơ quan. Đây là thông tin người dùng hỏi nhiều nhất.
+- Giữ nguyên số liệu, ngày, số hiệu văn bản, tên cơ quan. Đây là thông
+  tin người dùng hỏi nhiều nhất.
 
 - Không lowercase và không bỏ dấu ở bước này. Các biến đổi đó thuộc cấu
   hình của từng mô hình truy hồi.
 
 ### 5.3 EDA và kiểm tra chất lượng
 
-| **Kiểm tra**       | **Đạt khi**                                                | **Nếu không đạt**                                 |
-|--------------------|------------------------------------------------------------|---------------------------------------------------|
-| doc_id             | Duy nhất, không rỗng                                       | Dừng, sửa source_list                             |
-| Trường bắt buộc    | Mỗi thủ tục có đủ ít nhất hồ sơ, thời hạn, cơ quan         | Ghi vào issue_samples, tra lại nguồn              |
-| Độ dài từng trường | Có min, median, max; không có trường cực ngắn bất thường   | Kiểm tra lỗi trích xuất                           |
-| Trùng nội dung     | Không có hai doc_id cùng nội dung y hệt                    | Giữ một bản, log lý do                            |
-| Gần giống          | Có danh sách cặp thủ tục giống nhau trên 0,8 cosine TF IDF | Giữ cả hai; dùng cho phân tích tài liệu gần giống |
-| Hiệu lực           | Mọi căn cứ pháp lý đều còn hiệu lực                        | Thay bằng văn bản mới hoặc loại                   |
+| **Kiểm tra**   | **Đạt khi**                                               | **Nếu không đạt**                         |
+|----------------|-----------------------------------------------------------|-------------------------------------------|
+| Số Điều        | Khớp số Điều của văn bản gốc, đánh số liên tục            | Sửa regex nhận diện Điều                  |
+| Phân bổ        | Có số Điều theo từng Chương                               | Kiểm tra lỗi nhận diện Chương             |
+| Độ dài         | Có min, median, max số từ mỗi Điều; biết Điều nào quá dài | Đánh dấu Điều cần tách theo Khoản         |
+| Rỗng           | Không có Điều nào nội dung rỗng                           | Tra lại file gốc                          |
+| Trùng nội dung | Không có hai đoạn giống hệt nhau                          | Giữ một bản, log lý do                    |
+| Hiệu lực       | Điều bị bãi bỏ hoặc sửa đổi được đánh dấu                 | Ghi chú trong source_list, cập nhật bản mới |
 
-**Output:** data/interim/docs.jsonl,
-results/data_quality/corpus_report.md,
-results/data_quality/near_duplicate_docs.csv.
+**Output:** bảng Điều/Khoản (trong notebook hoặc file trung gian),
+results/data_quality/corpus_report.md.
 
 ## 6 D03 Chia đoạn (chunking)
 
 Đề yêu cầu hiển thị nguồn và đoạn trích, nên đoạn phải đủ ngắn để trích
 nguyên văn nhưng đủ dài để tự đứng được.
 
-1.  Chia theo cấu trúc trước: mỗi trường của một thủ tục là một đoạn.
-    Với quy chế học vụ, mỗi khoản là một đoạn.
+1.  Mỗi Điều là một đoạn.
 
-2.  Nếu một đoạn dài hơn ngưỡng (ví dụ 256 token sau tách từ, vì PhoBERT
-    giới hạn 256 token) thì cắt tiếp theo câu, chồng lấn 1 câu.
+2.  Điều dài hơn 200 từ (sau tách từ) thì tách theo Khoản, mỗi Khoản một
+    đoạn. Ngưỡng 200 chừa chỗ cho câu hỏi khi ghép cặp vào PhoBERT hoặc
+    cross-encoder (giới hạn 256 subword).
 
-3.  Gắn tiền tố ngữ cảnh vào văn bản đoạn, ví dụ "Đăng ký khai sinh.
-    Thành phần hồ sơ: ...". Không có tiền tố thì đoạn "Thời hạn: 1 ngày
-    làm việc" không biết thuộc thủ tục nào.
+3.  Gắn tiền tố ngữ cảnh vào văn bản đoạn, ví dụ "Luật Hộ tịch 2014 |
+    Điều 16. Thủ tục đăng ký khai sinh | Khoản 1: ...". Không có tiền tố
+    thì một Khoản đứng riêng không biết thuộc Điều nào.
 
-4.  Tạo chunk_id ổn định theo dạng
-    \<doc_id\>\_\_\<truong\>\_\_\<so_thu_tu\>. Không dùng số dòng làm
-    ID.
+4.  Tạo chunk_id ổn định ghép từ số hiệu, Điều, Khoản, ví dụ
+    60.2014.QH13\_\_D16\_\_K1. Không dùng số dòng làm ID. Format cuối
+    cùng chốt theo notebook 01_doc_luat.
 
-5.  Lưu chunk_text (dùng cho mô hình) và display_text (nguyên văn, dùng
-    để hiển thị trích dẫn).
+5.  Lưu chunk_text (có tiền tố, dùng cho mô hình) và display_text
+    (nguyên văn, dùng để hiển thị trích dẫn).
 
 | **Trường trong chunks.jsonl** | **Ý nghĩa**                                            |
 |-------------------------------|--------------------------------------------------------|
 | chunk_id                      | Khóa chính, ổn định qua các phiên bản                  |
-| doc_id, field                 | Thuộc tài liệu nào, trường nào                         |
+| doc_id, dieu, khoan           | Thuộc văn bản nào, Điều nào, Khoản nào                 |
 | chunk_text                    | Có tiền tố ngữ cảnh, đã làm sạch                       |
 | display_text                  | Nguyên văn để trích dẫn                                |
 | url, accessed_at              | Nguồn tham chiếu hiển thị trên giao diện               |
@@ -288,7 +261,7 @@ nguyên văn nhưng đủ dài để tự đứng được.
 | **Assertion** | **Kỳ vọng**                                      |
 |---------------|--------------------------------------------------|
 | chunk_id      | Duy nhất; mọi chunk có cả chunk_text và text_seg |
-| Bao phủ       | Mọi doc_id có ít nhất một chunk                  |
+| Bao phủ       | Mọi Điều có ít nhất một chunk                    |
 | Rỗng          | 0 chunk rỗng                                     |
 | Độ dài        | Không chunk nào vượt ngưỡng token đã cấu hình    |
 | Tái lập       | Chạy hai lần cho cùng hash file đầu ra           |
@@ -297,13 +270,14 @@ nguyên văn nhưng đủ dài để tự đứng được.
 
 > **Đây là phần quan trọng nhất.** Mục tiêu khoảng 300 câu hỏi (5 người,
 > mỗi người khoảng 60 câu), mỗi câu gán một hoặc vài chunk đúng. Thà ít
-> thủ tục mà nhiều câu hỏi chất lượng, còn hơn nhiều thủ tục mà câu hỏi
+> văn bản mà nhiều câu hỏi chất lượng, còn hơn nhiều văn bản mà câu hỏi
 > sơ sài.
 
 ### 7.1 Quy trình viết câu hỏi
 
-1.  Với mỗi thủ tục, viết một câu hỏi gốc cho mỗi trường quan trọng (hồ
-    sơ, thời hạn, cơ quan, lệ phí, cách thức). Mỗi câu gốc là một
+1.  Với mỗi Điều quan trọng (đăng ký khai sinh, kết hôn, khai tử, cải
+    chính...), viết một câu hỏi gốc cho mỗi ý người dân hay hỏi (giấy
+    tờ, thời hạn, nộp ở đâu, ai được làm). Mỗi câu gốc là một
     question_group.
 
 2.  Với mỗi câu gốc, viết thêm 2 đến 3 cách hỏi khác: văn nói, không
@@ -359,7 +333,7 @@ thống được tính đúng khi từ chối trả lời.
 - Viết annotation_guideline.md trước khi gán nhãn: khi nào gán 2, khi
   nào gán 1, xử lý câu nhiều ý thế nào (gán đủ chunk cho mọi ý).
 
-- Với câu underspecified, gán các chunk của mọi thủ tục có thể đúng và
+- Với câu underspecified, gán các chunk của mọi Điều có thể đúng và
   ghi chú cần hỏi lại người dùng.
 
 - Không gán nhãn bằng cách xem kết quả BM25 trả về rồi chọn. Làm vậy sẽ
@@ -377,8 +351,8 @@ thống được tính đúng khi từ chối trả lời.
 3.  Loại câu hỏi trùng hoặc gần trùng trong cùng nhóm; câu trùng giữa
     hai nhóm khác nhau thì gộp nhóm.
 
-4.  Thống kê số câu theo type, theo thủ tục, theo trường. Thủ tục nào ít
-    câu hỏi thì bổ sung.
+4.  Thống kê số câu theo type, theo Chương, theo Điều. Điều quan trọng
+    nào ít câu hỏi thì bổ sung.
 
 **Output:** results/data_quality/label_agreement.md,
 results/data_quality/question_stats.csv.
@@ -409,7 +383,7 @@ chia.
 
 ### 9.2 Tiêu chí được phép freeze
 
-- Raw còn nguyên, sha256 khớp raw_manifest.
+- File gốc trong data/raw còn nguyên, không bị sửa.
 
 - Mọi tài liệu có nguồn, ngày tải và căn cứ còn hiệu lực.
 
@@ -506,9 +480,9 @@ vị trí chunk đúng đầu tiên:
 2.  Tạo train_pairs.csv gồm question_id, chunk_id, label (1 hoặc 0). Tỷ
     lệ gợi ý 1 positive với 3 đến 5 hard negative.
 
-3.  Ưu tiên hard negative thuộc thủ tục gần giống (cùng nhóm trong
-    near_duplicate_docs.csv). Đây là thứ giúp cross-encoder phân biệt
-    khai sinh thường và khai sinh có yếu tố nước ngoài.
+3.  Ưu tiên hard negative thuộc Điều gần giống, ví dụ đăng ký khai sinh
+    tại cấp xã và đăng ký khai sinh có yếu tố nước ngoài. Đây là thứ
+    giúp cross-encoder phân biệt hai trường hợp này.
 
 4.  Chỉ đào hard negative trên train. Không đụng tới validation và test.
 
@@ -539,16 +513,16 @@ vị trí chunk đúng đầu tiên:
   [huong-dan-git.md](huong-dan-git.md). Mô tả PR gồm Task ID, thay đổi, lệnh chạy, kết
   quả và điểm reviewer cần xem.
 
-- File HTML hoặc PDF gốc nếu lớn thì không commit thẳng; dùng Git LFS
-  hoặc lưu trên Drive chung và ghi đường dẫn trong raw_manifest.
+- File .doc/.PDF gốc nếu lớn (vài MB trở lên) thì không commit thẳng;
+  lưu trên Drive chung và ghi đường dẫn trong source_list.csv.
 
 ## 13 Checklist bàn giao cho nhóm
 
 - docs/scope.md ghi rõ lĩnh vực đã chọn và lý do.
 
-- source_list.csv và raw_manifest.csv đầy đủ URL, ngày tải, sha256.
+- source_list.csv đủ 3 văn bản: số hiệu, URL, ngày tải, tình trạng hiệu lực.
 
-- docs.jsonl có đủ các trường; báo cáo chất lượng kho tài liệu.
+- Văn bản đã tách Chương/Điều/Khoản đủ trường; báo cáo EDA kho văn bản.
 
 - chunks.jsonl có chunk_text, text_seg, display_text; tests pass.
 
@@ -575,8 +549,8 @@ vị trí chunk đúng đầu tiên:
 | Câu hỏi chép nguyên văn tài liệu      | BM25 thắng dễ, kết quả ảo            | Viết câu hỏi trước, đọc tài liệu sau          |
 | Split theo từng câu thay vì theo nhóm | Rò rỉ paraphrase giữa train và test  | Split theo question_group_id                  |
 | Gán nhãn dựa trên kết quả BM25        | Thiên vị baseline                    | Gán nhãn độc lập với mô hình                  |
-| Chunk không có tiền tố ngữ cảnh       | Truy hồi đúng đoạn nhưng sai thủ tục | Thêm tên thủ tục và tên trường vào chunk_text |
-| chunk_id theo số dòng                 | Đổi chunking là mất toàn bộ nhãn     | ID ghép từ doc_id, trường, số thứ tự          |
+| Chunk không có tiền tố ngữ cảnh       | Truy hồi đúng đoạn nhưng sai Điều    | Thêm tên văn bản và tên Điều vào chunk_text   |
+| chunk_id theo số dòng                 | Đổi chunking là mất toàn bộ nhãn     | ID ghép từ doc_id, Điều, Khoản                |
 | Dùng văn bản hết hiệu lực             | Trả lời sai thực tế                  | Ghi ngày tải, kiểm tra hiệu lực               |
 | Không có câu ngoài phạm vi            | Không đo được tỷ lệ từ chối hợp lý   | Khoảng 10% out_of_scope và 10% unsupported    |
 | Chọn ngưỡng trên test                 | Kết quả test không còn khách quan    | Chọn trên validation                          |
