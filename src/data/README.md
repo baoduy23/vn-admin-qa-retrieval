@@ -1,6 +1,6 @@
 # src/data/ — xử lý dữ liệu (TV1)
 
-Nguồn là văn bản luật tải tay từ vbpl.vn, nên không có bước cào web.
+Nguồn là văn bản luật tải tay (vbpl.vn, hoặc toàn văn trên thuvienphapluat.vn khi chỉ có PDF scan), nên không có bước cào web. Danh sách văn bản: `data/raw/source_list.csv`.
 
 | File | Làm gì |
 |---|---|

@@ -1,6 +1,6 @@
 # Lộ trình và phân công: Đề tài 10, gợi ý câu trả lời cho câu hỏi hành chính
 
-Bản này thay cho file lộ trình cũ (B0 đến B7) và đã cập nhật ngày 08/10/2026 theo hướng mới: **kho tài liệu là văn bản luật tải từ vbpl.vn, không cào Cổng Dịch vụ công nữa**. Bảng phân công chính thức nằm trong Google Doc của nhóm (link ở README). Nếu file này lệch với Google Doc thì lấy Google Doc làm chuẩn.
+Bản này thay cho file lộ trình cũ (B0 đến B7) và đã cập nhật ngày 08/10/2026 theo hướng mới: **kho tài liệu là văn bản luật tải tay (vbpl.vn, thuvienphapluat.vn), không cào Cổng Dịch vụ công nữa**. Bảng phân công chính thức nằm trong Google Doc của nhóm (link ở README). Nếu file này lệch với Google Doc thì lấy Google Doc làm chuẩn.
 
 ---
 
@@ -8,7 +8,7 @@ Bản này thay cho file lộ trình cũ (B0 đến B7) và đã cập nhật ng
 
 | Chủ đề | Lộ trình cũ | Bây giờ chốt | Lý do |
 |---|---|---|---|
-| Nguồn dữ liệu | Cào khoảng 50 thủ tục trên Cổng Dịch vụ công | **Văn bản luật tải tay từ vbpl.vn**, bắt đầu với Luật Hộ tịch 60/2014/QH13 | Văn bản luật có cấu trúc Chương/Điều/Khoản rõ ràng, không phải viết crawler |
+| Nguồn dữ liệu | Cào khoảng 50 thủ tục trên Cổng Dịch vụ công | **Văn bản luật tải tay**: Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP. Nguồn vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn | Văn bản luật có cấu trúc Chương/Điều/Khoản rõ ràng, không phải viết crawler |
 | Phạm vi | Hộ tịch + cư trú | **Hộ tịch trước.** Chỉ thêm cư trú (hoặc nghị định, thông tư hướng dẫn hộ tịch) khi Dataset v1 đã freeze mà vẫn còn dư thời gian | Câu hỏi có nhãn mới là phần tốn công. Thêm văn bản thì phải viết thêm câu hỏi |
 | Đơn vị chia đoạn | Theo mục của thủ tục (hồ sơ, lệ phí...) | **1 Điều = 1 chunk**, Điều dài hơn 200 từ thì tách theo Khoản | Điều là đơn vị trích dẫn tự nhiên của luật |
 | Định dạng nhãn | `gold_chunk_ids` dạng list, đúng hoặc sai | **`qrels.csv` có relevance 2 hoặc 1** | NDCG@k chỉ có nghĩa khi có độ liên quan nhiều mức |
@@ -28,7 +28,7 @@ Ngoài các mục trên, những phần còn lại của lộ trình cũ vẫn g
 
 | | Vai trò | Phụ trách chính | Bàn giao cho |
 |---|---|---|---|
-| **TV1 (Duy)** | Dữ liệu và baseline | Chốt phạm vi, tải văn bản từ vbpl.vn, tách Chương/Điều/Khoản, làm sạch, chia đoạn, freeze Dataset v1, TF-IDF và BM25, đào hard negative | Cả nhóm (kho), TV3 (hard negative) |
+| **TV1 (Duy)** | Dữ liệu và baseline | Chốt phạm vi, tải văn bản luật, tách Chương/Điều/Khoản, làm sạch, chia đoạn, freeze Dataset v1, TF-IDF và BM25, đào hard negative | Cả nhóm (kho), TV3 (hard negative) |
 | **TV2 (Khang)** | Bộ test và đánh giá | Hướng dẫn gán nhãn, điều phối viết câu hỏi và gán nhãn chéo, tính kappa, chia tập, viết **một script đánh giá chung**, trưởng nhóm phân tích lỗi (B6) | Cả nhóm (script đánh giá, split) |
 | **TV3** | Mô hình truy hồi | SBERT tiếng Việt, hybrid BM25 + SBERT, cross-encoder hoặc PhoBERT xếp hạng lại, hàm `retrieve()`, câu hỏi tương tự | TV4 (top-k ứng viên đã xếp hạng) |
 | **TV4** | Trả lời và app | Mẫu câu trả lời trích Điều/Khoản, ngưỡng từ chối τ, hàm `answer()`, app Streamlit + SQLite, deploy | TV5 (link demo) |
@@ -66,8 +66,8 @@ Giai đoạn 4  Phân tích     TV2 chạy test một lần cho mọi mô hình 
 
 Làm theo file **Hướng dẫn Thành viên 1** (S01 đến D06, M01, M02). Riêng D04 và D05 thì TV1 chỉ làm phần của mình, TV2 làm điều phối.
 
-- [ ] `docs/scope.md`, `data/raw/source_list.csv` (số hiệu văn bản, URL vbpl.vn, ngày tải, tình trạng hiệu lực)
-- [ ] `data/raw/<so_hieu>.doc` và `.PDF` bản gốc, `data/interim/<so_hieu>.docx`
+- [ ] `docs/scope.md`, `data/raw/source_list.csv` (3 văn bản: số hiệu, URL, ngày tải, tình trạng hiệu lực)
+- [ ] `data/raw/<so_hieu>.*` bản gốc (.doc/.pdf, hoặc .html trang TVPL khi chỉ có PDF scan), `data/interim/<so_hieu>.docx`
 - [ ] Tách văn bản thành các trường `doc_id, chuong, dieu, tieu_de, khoan, noi_dung` (prototype trong `notebooks/01_doc_luat.ipynb`, sau chuyển thành `src/data/parse_luat.py`)
 - [ ] `data/processed/chunks.jsonl` (`chunk_id` ví dụ `60.2014.QH13__D16__K1`, `text` có tiền tố `<tên văn bản> | <Điều>`, `text_seg` đã tách từ, `display_text` nguyên văn)
 - [ ] Báo cáo kho: số Chương, số Điều, số chunk, độ dài min/median/max, các cặp Điều nội dung gần nhau
@@ -98,7 +98,7 @@ Làm theo file **Hướng dẫn Thành viên 1** (S01 đến D06, M01, M02). Ri�
 
 ### TV4. Trả lời và app
 
-- [ ] Mẫu câu trả lời: `Theo <tên văn bản>, Điều <X> Khoản <Y>: "<trích nguyên văn>"` kèm link vbpl.vn
+- [ ] Mẫu câu trả lời: `Theo <tên văn bản>, Điều <X> Khoản <Y>: "<trích nguyên văn>"` kèm link văn bản gốc
 - [ ] Ngưỡng từ chối τ chọn trên dev. Báo cáo tỷ lệ từ chối đúng trên câu `out_of_scope` và `unsupported`, tỷ lệ từ chối nhầm trên câu trả lời được
 - [ ] Câu nhiều ý: thử tách câu hỏi theo liên từ ("và", "còn") rồi trả lời từng ý, so sánh với không tách
 - [ ] Hàm `answer(q)` trả về `{answer, sources[], similar_questions[], refused, scores}`

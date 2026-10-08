@@ -4,7 +4,7 @@ Dữ liệu đi một chiều: `raw → interim → processed`. Thư mục sau l
 
 | Thư mục / file | Nội dung | Ai tạo | Commit? |
 |---|---|---|---|
-| `raw/` | File luật gốc tải từ vbpl.vn (`.doc`, `.PDF`), **bất biến** | TV1, tải tay | Có (file nhỏ) |
+| `raw/` | Văn bản gốc, **bất biến**: `.doc`/`.pdf` tải từ vbpl.vn hoặc vanban.chinhphu.vn, `.html` trang thuvienphapluat.vn lưu bằng Ctrl+S (khi bản PDF chỉ là scan) | TV1, tải tay | Có (file nhỏ) |
 | `raw/source_list.csv` | Danh sách văn bản đã tải: số hiệu, tên, url, ngày tải | TV1, điền tay | Có |
 | `interim/` | Bản `.docx` đọc được bằng code | TV1 | Có |
 | `processed/chunks.jsonl` | 1 dòng = 1 đoạn để lập chỉ mục (1 Điều, hoặc 1 Khoản nếu Điều dài) | Script tách luật (đang làm trong notebook) | Có |

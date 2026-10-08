@@ -9,9 +9,10 @@ hoặc học vụ
 đoạn, freeze Dataset v1 và baseline TF IDF, BM25. Bộ câu hỏi do cả nhóm
 viết, Thành viên 2 điều phối (xem file Lộ trình và phân công)
 
-**Phạm vi đã chốt:** lĩnh vực hộ tịch. Nguồn là văn bản pháp luật tải
-tay từ vbpl.vn, bắt đầu từ Luật Hộ tịch 60/2014/QH13 (xem
-docs/scope.md). Không cào web.
+**Phạm vi đã chốt:** lĩnh vực hộ tịch. Kho gồm Luật Hộ tịch
+60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP (xem
+docs/scope.md). Tải tay từ vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn
+văn trên thuvienphapluat.vn. Không cào web.
 
 **Repository:** repo này
 
@@ -33,7 +34,7 @@ qrels, split theo nhóm câu hỏi, báo cáo chất lượng và kết quả ba
 | **Giai đoạn** | **Công việc**                                         | **Đầu ra chính**                                   |
 |---------------|-------------------------------------------------------|----------------------------------------------------|
 | S01           | Chốt phạm vi và danh sách văn bản                     | docs/scope.md, data/raw/source_list.csv            |
-| D01           | Tải văn bản gốc từ vbpl.vn                            | data/raw/ (.doc, .pdf), bản .docx trong interim/   |
+| D01           | Tải văn bản gốc (vbpl.vn, thuvienphapluat.vn)         | data/raw/ (.doc, .pdf, .html), .docx trong interim/ |
 | D02           | Tách cấu trúc Chương, Điều, Khoản; làm sạch; EDA      | bảng Điều/Khoản, báo cáo chất lượng                |
 | D03           | Chia đoạn (chunking)                                  | chunks.jsonl có chunk_id ổn định                   |
 | D04           | Viết câu hỏi phần mình, gán nhãn chéo (TV2 điều phối) | questions.csv, qrels.csv                           |
@@ -47,7 +48,7 @@ qrels, split theo nhóm câu hỏi, báo cáo chất lượng và kết quả ba
 ```
 data/
   raw/source_list.csv          danh sách văn bản: số hiệu, tên, url, ngày tải
-  raw/<so_hieu>.doc, .PDF      file gốc tải từ vbpl.vn
+  raw/<so_hieu>.doc/.pdf/.html file gốc (vbpl.vn, vanban.chinhphu.vn, TVPL)
   interim/<so_hieu>.docx       bản .docx để code đọc
   processed/chunks.jsonl
   labels/questions.csv
@@ -105,17 +106,18 @@ artifacts/                     index, vectorizer
 | **Mục**           | **Đã chốt**                                                                 |
 |-------------------|-----------------------------------------------------------------------------|
 | Lĩnh vực          | Hộ tịch                                                                     |
-| Nguồn             | vbpl.vn, Cơ sở dữ liệu quốc gia về văn bản pháp luật                         |
+| Nguồn             | vbpl.vn; thuvienphapluat.vn khi văn bản chỉ có PDF scan                       |
 | Cách lấy          | Tải tay file .doc và PDF bản gốc, không cào web                             |
-| Văn bản đầu tiên  | Luật Hộ tịch 60/2014/QH13                                                    |
+| Văn bản trong kho | Luật 60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP         |
 | Cấu trúc tài liệu | Chương, (Mục), Điều, Khoản, Điểm                                             |
 | Viết câu hỏi      | Đóng vai người dân hỏi về đăng ký khai sinh, kết hôn, khai tử, cải chính... |
 
 ### 3.3 Mở rộng kho (nếu cần)
 
-- Chỉ thêm văn bản khi bộ câu hỏi cần mà Luật không có đáp án, ví dụ chi
-  tiết hồ sơ, lệ phí, thời hạn thường nằm ở nghị định hoặc thông tư
-  hướng dẫn.
+- Chi tiết hồ sơ, giấy tờ, cách làm từng trường hợp thường nằm ở nghị
+  định và thông tư hướng dẫn, nên kho đã có Nghị định 123/2015 và Thông
+  tư 04/2020. Chỉ thêm văn bản khác khi bộ câu hỏi cần mà 3 văn bản này
+  không có đáp án.
 
 - Trước khi thêm, xem tab hiệu lực trên vbpl.vn: chỉ lấy văn bản còn
   hiệu lực tại ngày tải, ghi văn bản sửa đổi nếu có.
@@ -126,11 +128,11 @@ artifacts/                     index, vectorizer
 
 | **Cột**       | **Ý nghĩa**                                                         |
 |---------------|---------------------------------------------------------------------|
-| doc_id        | Số hiệu văn bản, ví dụ 60.2014.QH13; không đổi về sau               |
+| doc_id        | Số hiệu viết không dấu, ví dụ 60.2014.QH13, 123.2015.ND-CP; không đổi về sau |
 | title         | Tên văn bản, ví dụ Luật Hộ tịch                                     |
 | source_type   | legal_text                                                          |
-| url           | Đường dẫn trang văn bản trên vbpl.vn                                |
-| issuing_level | Cơ quan ban hành, ví dụ Quốc hội                                    |
+| url           | Đường dẫn trang văn bản đã lấy chữ (vbpl.vn hoặc thuvienphapluat.vn) |
+| issuing_level | Cơ quan ban hành: Quốc hội, Chính phủ, Bộ Tư pháp                   |
 | legal_basis   | Văn bản sửa đổi, bổ sung (nếu có)                                   |
 | accessed_at   | Ngày tải, định dạng YYYY-MM-DD                                      |
 | in_scope      | yes hoặc no; văn bản ngoài phạm vi vẫn ghi lại để làm câu hỏi từ chối |
@@ -142,6 +144,13 @@ artifacts/                     index, vectorizer
 2.  Tải file gốc (.doc và PDF nếu có) về data/raw, đặt tên theo số hiệu.
     Không đổi tên hay sửa nội dung file gốc.
 
+    Nếu chỉ có PDF scan (ví dụ file .signed.pdf của vanban.chinhphu.vn:
+    chuyển sang text chỉ ra dòng "Ký bởi..." của chữ ký số), thì vẫn giữ
+    file scan trong data/raw để đối chiếu, rồi mở văn bản trên
+    thuvienphapluat.vn: Ctrl+S lưu trang thành data/raw/<so_hieu>.html,
+    và copy phần toàn văn (dán vào Word chọn Keep Text Only) để làm bản
+    .docx. Không cào TVPL bằng code.
+
 3.  Chuyển .doc sang .docx (Word: Save As, hoặc LibreOffice) và lưu vào
     data/interim. Code chỉ đọc bản .docx.
 
@@ -151,7 +160,7 @@ artifacts/                     index, vectorizer
 5.  Mở bản .docx kiểm tra: đủ số Điều, không mất bảng, không lẫn chú
     thích hay header trang.
 
-**Input:** trang văn bản trên vbpl.vn. **Output:** data/raw/,
+**Input:** trang văn bản trên vbpl.vn hoặc thuvienphapluat.vn. **Output:** data/raw/,
 data/interim/, data/raw/source_list.csv.
 
 ## 5 D02 Tách cấu trúc, làm sạch và EDA
@@ -511,7 +520,7 @@ vị trí chunk đúng đầu tiên:
 
 - docs/scope.md ghi rõ lĩnh vực đã chọn và lý do.
 
-- source_list.csv đầy đủ số hiệu, URL vbpl.vn, ngày tải, tình trạng hiệu lực.
+- source_list.csv đủ 3 văn bản: số hiệu, URL, ngày tải, tình trạng hiệu lực.
 
 - Văn bản đã tách Chương/Điều/Khoản đủ trường; báo cáo EDA kho văn bản.
 
