@@ -59,6 +59,8 @@ artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
 
+Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
+
 ## Chạy thử
 
 ```bash
