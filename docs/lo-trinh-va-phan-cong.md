@@ -8,7 +8,7 @@ Bản này thay cho file lộ trình cũ (B0 đến B7) và đã cập nhật ng
 
 | Chủ đề | Lộ trình cũ | Bây giờ chốt | Lý do |
 |---|---|---|---|
-| Nguồn dữ liệu | Cào khoảng 50 thủ tục trên Cổng Dịch vụ công | **Văn bản luật tải tay**: Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP. Nguồn vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn | Văn bản luật có cấu trúc Chương/Điều/Khoản rõ ràng, không phải viết crawler |
+| Nguồn dữ liệu | Cào khoảng 50 thủ tục trên Cổng Dịch vụ công | **Văn bản luật tải tay**: 10 văn bản (Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP và các văn bản sửa đổi, danh sách trong `data/raw/source_list.csv`), hợp nhất bằng `data/raw/amendments.yaml`. Nguồn vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn | Văn bản luật có cấu trúc Chương/Điều/Khoản rõ ràng, không phải viết crawler |
 | Phạm vi | Hộ tịch + cư trú | **Hộ tịch trước.** Chỉ thêm cư trú (hoặc nghị định, thông tư hướng dẫn hộ tịch) khi Dataset v1 đã freeze mà vẫn còn dư thời gian | Câu hỏi có nhãn mới là phần tốn công. Thêm văn bản thì phải viết thêm câu hỏi |
 | Đơn vị chia đoạn | Theo mục của thủ tục (hồ sơ, lệ phí...) | **1 Điều = 1 chunk**, Điều dài hơn 200 từ thì tách theo Khoản | Điều là đơn vị trích dẫn tự nhiên của luật |
 | Định dạng nhãn | `gold_chunk_ids` dạng list, đúng hoặc sai | **`qrels.csv` có relevance 2 hoặc 1** | NDCG@k chỉ có nghĩa khi có độ liên quan nhiều mức |
@@ -66,9 +66,10 @@ Giai đoạn 4  Phân tích     TV2 chạy test một lần cho mọi mô hình 
 
 Làm theo file **Hướng dẫn Thành viên 1** (S01 đến D06, M01, M02). Riêng D04 và D05 thì TV1 chỉ làm phần của mình, TV2 làm điều phối.
 
-- [ ] `docs/scope.md`, `data/raw/source_list.csv` (3 văn bản: số hiệu, URL, ngày tải, tình trạng hiệu lực)
+- [ ] `docs/scope.md`, `data/raw/source_list.csv` (10 văn bản: số hiệu, URL, ngày hiệu lực, tình trạng hiệu lực, ngày tải)
 - [ ] `data/raw/<so_hieu>.*` bản gốc (.doc/.pdf, hoặc .html trang TVPL khi chỉ có PDF scan), `data/interim/<so_hieu>.docx`
-- [ ] Tách văn bản thành các trường `doc_id, chuong, dieu, tieu_de, khoan, noi_dung` (prototype trong `notebooks/01_doc_luat.ipynb`, sau chuyển thành `src/data/parse_luat.py`)
+- [ ] Tách văn bản tới mức Điểm, các trường `doc_id, chuong, muc, dieu, tieu_de, khoan, diem, noi_dung` (`dieu` dạng chuỗi vì có Điều 28a) (prototype trong `notebooks/01_doc_luat.ipynb`, sau chuyển thành `src/data/parse_luat.py`)
+- [ ] `data/raw/amendments.yaml`: phần sửa đổi của các văn bản sửa đổi, áp vào văn bản gốc để ra bản hợp nhất
 - [ ] `data/processed/chunks.jsonl` (`chunk_id` ví dụ `60.2014.QH13__D16__K1`, `text` có tiền tố `<tên văn bản> | <Điều>`, `text_seg` đã tách từ, `display_text` nguyên văn)
 - [ ] Báo cáo kho: số Chương, số Điều, số chunk, độ dài min/median/max, các cặp Điều nội dung gần nhau
 - [ ] TF-IDF và BM25 ở hai mức token (âm tiết và từ), chạy bằng script đánh giá của TV2

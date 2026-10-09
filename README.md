@@ -2,7 +2,7 @@
 
 Đề tài 10, môn Xử lý ngôn ngữ tự nhiên. Hệ thống nhận câu hỏi của người dùng, tìm đoạn văn bản hoặc câu hỏi tương tự trong kho tài liệu, xếp hạng và trả lời bằng trích dẫn nguyên văn kèm nguồn. Trọng tâm là retrieval và question matching, không phải chatbot tạo sinh.
 
-**Phạm vi mặc định:** lĩnh vực hộ tịch (khai sinh, kết hôn, khai tử, thay đổi và cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục). Nhóm chốt trong [docs/scope.md](docs/scope.md).
+**Phạm vi mặc định:** lĩnh vực hộ tịch (khai sinh, kết hôn, khai tử, thay đổi và cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục). Kho phản ánh quy định hộ tịch có hiệu lực tại ngày 09/10/2026, dùng được đến 28/02/2027. Nhóm chốt trong [docs/scope.md](docs/scope.md).
 
 ## Pipeline
 
@@ -44,7 +44,7 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 ## Cấu trúc thư mục
 
 ```
-data/raw/          văn bản gốc (.doc, .pdf, .html), bất biến
+data/raw/          văn bản gốc (.doc, .pdf, .html), bất biến; source_list.csv, amendments.yaml
 data/interim/      bản .docx để code đọc
 data/processed/    chunks.jsonl (text, text_seg, display_text)
 data/labels/       questions.csv, qrels.csv, annotation_guideline.md
@@ -53,6 +53,7 @@ configs/           cấu hình tiền xử lý, chunking, baseline, split
 src/data/          làm sạch, tách luật, chunking, split
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
 src/app/           giao diện hỏi đáp
+notebooks/         thử nghiệm trước khi chuyển thành script (01_doc_luat.ipynb)
 tests/             pytest
 results/           báo cáo chất lượng, bảng kết quả
 artifacts/         index, model (không commit file lớn)
@@ -71,11 +72,13 @@ python -m pytest
 
 ## Pipeline dữ liệu (TV1)
 
-Nguồn: Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP, tải tay từ vbpl.vn; văn bản nào vbpl hoặc vanban.chinhphu.vn chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn. Không cào web. Danh sách đầy đủ ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
+Nguồn: 10 văn bản luật về hộ tịch (chốt theo quy định có hiệu lực tại 09/10/2026), gồm Luật Hộ tịch 60/2014/QH13, các Nghị định, Thông tư hướng dẫn và văn bản sửa đổi, tải tay từ vbpl.vn; văn bản nào vbpl hoặc vanban.chinhphu.vn chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn. Không cào web. Danh sách đầy đủ ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
 
 ```
 data/raw/        file gốc tải về (.doc, .pdf, .html trang TVPL), không sửa
-data/interim/    bản .docx đọc được
+                 amendments.yaml: phần sửa đổi, bổ sung, bãi bỏ của văn bản sửa đổi
+data/interim/    <doc_id>.docx, bản gốc chưa áp sửa đổi
+      │  tách Chương → Mục → Điều → Khoản → Điểm, áp amendments.yaml (bản hợp nhất)
 data/processed/  chunks.jsonl: 1 Điều = 1 đoạn, Điều dài quá 200 từ thì tách theo Khoản
 ```
 
@@ -93,5 +96,5 @@ Bước tách Điều/Khoản đang làm thử trong `notebooks/01_doc_luat.ipyn
 
 - Nhánh `main` chỉ nhận code qua Pull Request; mỗi task một nhánh `feature/<ID>-<mo-ta>`, ví dụ `feature/D04-question-labels`.
 - Commit theo dạng `feat(D04): ...`, `fix(M01): ...`, `docs: ...`.
-- Không sửa dữ liệu trong `data/raw`; không commit file lớn hơn vài MB (dùng Drive chung, ghi đường dẫn trong manifest).
+- Không sửa dữ liệu trong `data/raw`; không commit file lớn hơn vài MB (dùng Drive chung, ghi đường dẫn trong `data/raw/source_list.csv`).
 - Không dùng tập test để chọn tham số hoặc ngưỡng từ chối.
