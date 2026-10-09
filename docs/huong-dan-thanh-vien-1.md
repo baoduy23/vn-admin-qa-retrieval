@@ -111,7 +111,7 @@ artifacts/                     index, vectorizer
 | Nguồn             | vbpl.vn; thuvienphapluat.vn khi văn bản chỉ có PDF scan                       |
 | Cách lấy          | Tải tay file .doc và PDF bản gốc, không cào web                             |
 | Văn bản trong kho | 10 văn bản: Luật 60/2014, NĐ 123/2015, TT 04/2020, NĐ 87/2020 và 6 văn bản sửa đổi, ảnh hưởng hiệu lực (xem source_list.csv) |
-| Văn bản sửa đổi   | Không chunk riêng; áp vào văn bản gốc qua data/raw/amendments.yaml (mục 5.4) |
+| Văn bản sửa đổi   | Không chunk riêng; áp vào văn bản gốc qua data/raw/amendments.yaml (mục 5.4). Riêng NĐ 120/2025 (không sửa câu chữ) thì chunk Điều 4–8 và mục I Phụ lục |
 | Cấu trúc tài liệu | Chương, (Mục), Điều, Khoản, Điểm                                             |
 | Viết câu hỏi      | Đóng vai người dân hỏi về đăng ký khai sinh, kết hôn, khai tử, cải chính... |
 
@@ -239,14 +239,22 @@ cũ đã bị sửa. Vì vậy kho dùng bản hợp nhất:
 
 2.  10 kiểu thao tác: replace_dieu, replace_khoan, replace_diem,
     insert_khoan, insert_dieu, rename_dieu, repeal, remove_phrase,
-    replace_phrase, note. Thay đổi không sửa câu chữ (bỏ sổ hộ khẩu,
-    thẩm quyền theo chính quyền 2 cấp) ghi bằng note, gắn ghi chú vào
-    Điều liên quan.
+    replace_phrase, note. Bỏ cụm từ "sổ hộ khẩu, sổ tạm trú" (104/2022,
+    09/2022) là remove_phrase; câu chữ trong văn bản gốc có thể khác chữ
+    hoa, dấu câu nên phải kiểm tra tay. Thẩm quyền theo chính quyền 2
+    cấp (NĐ 120/2025) không sửa câu chữ, ghi bằng note gắn vào Điều liên
+    quan; thời hạn mới trong mục I Phụ lục NĐ 120 thì chunk riêng, không
+    chỉ ghi note.
 
 3.  Chép câu chữ thì bỏ dấu “ ” ở đầu và cuối đoạn trích. Bãi bỏ thì
     không đánh số lại Khoản.
 
-4.  Code áp amendments.yaml sau bước tách cấu trúc, trước bước chunk.
+4.  Áp theo thứ tự ngày hiệu lực của văn bản sửa đổi: 87/2020 →
+    104/2022 → 09/2022 → 04/2024 → 07/2025 → 18/2026. Cùng một Khoản bị
+    sửa nhiều lần (ví dụ khoản 1 Điều 2 NĐ 123 bị 07/2025 rồi 18/2026
+    thay) thì bản sau cùng thắng.
+
+5.  Code áp amendments.yaml sau bước tách cấu trúc, trước bước chunk.
     Đoạn bị sửa ghi lại amended_by để hiển thị nguồn.
 
 ## 6 D03 Chia đoạn (chunking)

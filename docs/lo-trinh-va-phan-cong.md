@@ -9,7 +9,7 @@ Bản này thay cho file lộ trình cũ (B0 đến B7) và đã cập nhật ng
 | Chủ đề | Lộ trình cũ | Bây giờ chốt | Lý do |
 |---|---|---|---|
 | Nguồn dữ liệu | Cào khoảng 50 thủ tục trên Cổng Dịch vụ công | **Văn bản luật tải tay**: 10 văn bản (Luật Hộ tịch 60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP và các văn bản sửa đổi, danh sách trong `data/raw/source_list.csv`), hợp nhất bằng `data/raw/amendments.yaml`. Nguồn vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn | Văn bản luật có cấu trúc Chương/Điều/Khoản rõ ràng, không phải viết crawler |
-| Phạm vi | Hộ tịch + cư trú | **Hộ tịch trước.** Chỉ thêm cư trú (hoặc nghị định, thông tư hướng dẫn hộ tịch) khi Dataset v1 đã freeze mà vẫn còn dư thời gian | Câu hỏi có nhãn mới là phần tốn công. Thêm văn bản thì phải viết thêm câu hỏi |
+| Phạm vi | Hộ tịch + cư trú | **Hộ tịch trước.** Kho hộ tịch đã đủ Luật, Nghị định, Thông tư hướng dẫn và văn bản sửa đổi (10 văn bản). Chỉ thêm cư trú khi Dataset v1 đã freeze mà vẫn còn dư thời gian | Câu hỏi có nhãn mới là phần tốn công. Thêm văn bản thì phải viết thêm câu hỏi |
 | Đơn vị chia đoạn | Theo mục của thủ tục (hồ sơ, lệ phí...) | **1 Điều = 1 chunk**, Điều dài hơn 200 từ thì tách theo Khoản | Điều là đơn vị trích dẫn tự nhiên của luật |
 | Định dạng nhãn | `gold_chunk_ids` dạng list, đúng hoặc sai | **`qrels.csv` có relevance 2 hoặc 1** | NDCG@k chỉ có nghĩa khi có độ liên quan nhiều mức |
 | Định dạng kho | `docs.jsonl`, `chunks.jsonl` | **`data/processed/chunks.jsonl`**, câu hỏi để trong `questions.csv` cộng `qrels.csv` | jsonl chứa được các trường lồng nhau, còn câu hỏi thì sửa bằng bảng tính cho nhanh |

@@ -34,6 +34,7 @@ File `.html` là trang thuvienphapluat.vn lưu bằng Ctrl+S ("Trang web, chỉ 
 
 Văn bản sửa đổi viết kiểu "sửa Điều X thành: ...", để nguyên mà chunk thì đoạn rất khó hiểu. Nhóm chốt **hợp nhất**: code tách văn bản gốc trong `interim/`, rồi áp từng dòng của `amendments.yaml` để ra bản đang có hiệu lực, chỉ bản này được chunk.
 
+- Áp theo thứ tự ngày hiệu lực (07/2025 trước 18/2026); cùng một chỗ bị sửa nhiều lần thì bản sau cùng thắng.
 - Mỗi dòng gồm văn bản sửa đổi, văn bản bị sửa, vị trí (Điều, Khoản, Điểm), kiểu thao tác và câu chữ mới.
 - 10 kiểu thao tác: `replace_dieu`, `replace_khoan`, `replace_diem`, `insert_khoan`, `insert_dieu`, `rename_dieu`, `repeal`, `remove_phrase`, `replace_phrase`, `note`.
 - `note` dùng cho thay đổi không sửa câu chữ (thẩm quyền theo 120/2025): gắn ghi chú vào Điều liên quan, không đổi nội dung.
