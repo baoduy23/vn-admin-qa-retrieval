@@ -9,9 +9,11 @@ hoặc học vụ
 đoạn, freeze Dataset v1 và baseline TF IDF, BM25. Bộ câu hỏi do cả nhóm
 viết, Thành viên 2 điều phối (xem file Lộ trình và phân công)
 
-**Phạm vi đã chốt:** lĩnh vực hộ tịch. Kho gồm Luật Hộ tịch
-60/2014/QH13, Nghị định 123/2015/NĐ-CP và Thông tư 04/2020/TT-BTP (xem
-docs/scope.md). Tải tay từ vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn
+**Phạm vi đã chốt:** lĩnh vực hộ tịch. Kho gồm 10 văn bản: Luật Hộ tịch
+60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP và các
+văn bản sửa đổi, hướng dẫn liên quan (danh sách trong
+data/raw/source_list.csv, lý do trong docs/scope.md). Kho phản ánh
+quy định có hiệu lực tại 09/10/2026, dùng được đến 28/02/2027. Tải tay từ vbpl.vn; văn bản chỉ có PDF scan thì lấy toàn
 văn trên thuvienphapluat.vn. Không cào web.
 
 **Repository:** repo này
@@ -108,7 +110,8 @@ artifacts/                     index, vectorizer
 | Lĩnh vực          | Hộ tịch                                                                     |
 | Nguồn             | vbpl.vn; thuvienphapluat.vn khi văn bản chỉ có PDF scan                       |
 | Cách lấy          | Tải tay file .doc và PDF bản gốc, không cào web                             |
-| Văn bản trong kho | Luật 60/2014/QH13, Nghị định 123/2015/NĐ-CP, Thông tư 04/2020/TT-BTP         |
+| Văn bản trong kho | 10 văn bản: Luật 60/2014, NĐ 123/2015, TT 04/2020, NĐ 87/2020 và 6 văn bản sửa đổi, ảnh hưởng hiệu lực (xem source_list.csv) |
+| Văn bản sửa đổi   | Không chunk riêng; áp vào văn bản gốc qua data/raw/amendments.yaml (mục 5.4) |
 | Cấu trúc tài liệu | Chương, (Mục), Điều, Khoản, Điểm                                             |
 | Viết câu hỏi      | Đóng vai người dân hỏi về đăng ký khai sinh, kết hôn, khai tử, cải chính... |
 
@@ -116,7 +119,7 @@ artifacts/                     index, vectorizer
 
 - Chi tiết hồ sơ, giấy tờ, cách làm từng trường hợp thường nằm ở nghị
   định và thông tư hướng dẫn, nên kho đã có Nghị định 123/2015 và Thông
-  tư 04/2020. Chỉ thêm văn bản khác khi bộ câu hỏi cần mà 3 văn bản này
+  tư 04/2020. Chỉ thêm văn bản khác khi bộ câu hỏi cần mà kho hiện tại
   không có đáp án.
 
 - Trước khi thêm, xem tab hiệu lực trên vbpl.vn: chỉ lấy văn bản còn
@@ -133,7 +136,10 @@ artifacts/                     index, vectorizer
 | source_type   | legal_text                                                          |
 | url           | Đường dẫn trang văn bản đã lấy chữ (vbpl.vn hoặc thuvienphapluat.vn) |
 | issuing_level | Cơ quan ban hành: Quốc hội, Chính phủ, Bộ Tư pháp                   |
-| legal_basis   | Văn bản sửa đổi, bổ sung (nếu có)                                   |
+| amended_by    | Văn bản sửa câu chữ văn bản này (nếu có), ghi doc_id, nhiều văn bản cách nhau dấu ;, ví dụ 87.2020.ND-CP;07.2025.ND-CP. Là nguồn để viết amendments.yaml |
+| affected_by   | Văn bản đổi hiệu lực, thẩm quyền, thời hạn mà không sửa câu chữ (nếu có), ví dụ 120.2025.ND-CP |
+| effective_date | Ngày văn bản có hiệu lực, định dạng YYYY-MM-DD                     |
+| status        | Tình trạng hiệu lực tại ngày tải, ghi theo tab hiệu lực của trang nguồn: Còn hiệu lực, Hết hiệu lực một phần, Hết hiệu lực |
 | accessed_at   | Ngày tải, định dạng YYYY-MM-DD                                      |
 | in_scope      | yes hoặc no; văn bản ngoài phạm vi vẫn ghi lại để làm câu hỏi từ chối |
 
@@ -152,13 +158,16 @@ artifacts/                     index, vectorizer
     .docx. Không cào TVPL bằng code.
 
 3.  Chuyển .doc sang .docx (Word: Save As, hoặc LibreOffice) và lưu vào
-    data/interim. Code chỉ đọc bản .docx.
+    data/interim/<doc_id>.docx. Văn bản lấy từ TVPL thì copy phần toàn
+    văn, dán vào Word bằng Keep Text Only rồi lưu cùng chỗ. Code chỉ đọc
+    bản .docx, không đọc html.
 
 4.  Ghi một dòng vào source_list.csv: url, ngày tải. Tải bản mới thì lưu
     thành file mới, không ghi đè.
 
-5.  Mở bản .docx kiểm tra: đủ số Điều, không mất bảng, không lẫn chú
-    thích hay header trang.
+5.  Mở bản .docx kiểm tra: đủ số Điều (ví dụ NĐ 123: 45, TT 04/2020:
+    39), không mất bảng, không lẫn chú thích, header trang, ô "Từ khóa",
+    danh sách văn bản liên quan hay quảng cáo của trang nguồn.
 
 **Input:** trang văn bản trên vbpl.vn hoặc thuvienphapluat.vn. **Output:** data/raw/,
 data/interim/, data/raw/source_list.csv.
@@ -175,13 +184,19 @@ thị nguồn (Điều mấy, khoản mấy) chính xác hơn.
 |-------------|--------------------------------------------------|
 | doc_id      | 60.2014.QH13                                     |
 | chuong      | Chương II. Đăng ký hộ tịch tại Ủy ban nhân dân cấp xã |
-| dieu        | 16                                               |
+| muc         | Mục 1. Đăng ký khai sinh (để trống nếu không có) |
+| dieu        | "16", "28a" (lưu dạng chuỗi)                     |
 | tieu_de     | Thủ tục đăng ký khai sinh                        |
 | khoan       | 1, 2, 3... (để trống nếu Điều không chia khoản)  |
+| diem        | a, b, c, đ... (để trống nếu Khoản không chia điểm) |
 | noi_dung    | Nguyên văn nội dung Điều hoặc Khoản              |
 
-Nhận diện bằng mẫu đầu dòng: "Chương", "Mục", "Điều <số>.", "<số>." cho
-khoản, "<chữ cái>)" cho điểm.
+Nhận diện bằng mẫu đầu dòng: "Chương" (không phân biệt hoa thường),
+"Mục <số>.", "Điều <số>." với số có thể kèm chữ (regex `(\d+[a-z]?)`
+để bắt Điều 28a), "<số>." cho khoản, "<chữ cái>)" cho điểm.
+
+Kiểm tra tối thiểu: NĐ 123 ra 45 Điều, Luật 60 ra 77 Điều, Điều 12
+NĐ 123 có 4 khoản, Điều 4 khoản 1 NĐ 123 có điểm c.
 
 ### 5.2 Làm sạch văn bản
 
@@ -212,6 +227,28 @@ khoản, "<chữ cái>)" cho điểm.
 **Output:** bảng Điều/Khoản (trong notebook hoặc file trung gian),
 results/data_quality/corpus_report.md.
 
+### 5.4 Áp văn bản sửa đổi (amendments.yaml)
+
+Văn bản sửa đổi (07/2025/NĐ-CP, 04/2024/TT-BTP...) viết kiểu "sửa Điều X
+thành: ...", chunk nguyên văn thì đoạn rất khó hiểu và dễ trả về Điều
+cũ đã bị sửa. Vì vậy kho dùng bản hợp nhất:
+
+1.  Đọc phần sửa đổi trong văn bản sửa đổi, mỗi thay đổi ghi thành một
+    dòng trong data/raw/amendments.yaml: văn bản sửa đổi, văn bản bị
+    sửa, vị trí (Điều, Khoản, Điểm), kiểu thao tác, câu chữ mới.
+
+2.  10 kiểu thao tác: replace_dieu, replace_khoan, replace_diem,
+    insert_khoan, insert_dieu, rename_dieu, repeal, remove_phrase,
+    replace_phrase, note. Thay đổi không sửa câu chữ (bỏ sổ hộ khẩu,
+    thẩm quyền theo chính quyền 2 cấp) ghi bằng note, gắn ghi chú vào
+    Điều liên quan.
+
+3.  Chép câu chữ thì bỏ dấu “ ” ở đầu và cuối đoạn trích. Bãi bỏ thì
+    không đánh số lại Khoản.
+
+4.  Code áp amendments.yaml sau bước tách cấu trúc, trước bước chunk.
+    Đoạn bị sửa ghi lại amended_by để hiển thị nguồn.
+
 ## 6 D03 Chia đoạn (chunking)
 
 Đề yêu cầu hiển thị nguồn và đoạn trích, nên đoạn phải đủ ngắn để trích
@@ -228,8 +265,8 @@ nguyên văn nhưng đủ dài để tự đứng được.
     thì một Khoản đứng riêng không biết thuộc Điều nào.
 
 4.  Tạo chunk_id ổn định ghép từ số hiệu, Điều, Khoản, ví dụ
-    60.2014.QH13\_\_D16\_\_K1. Không dùng số dòng làm ID. Format cuối
-    cùng chốt theo notebook 01_doc_luat.
+    60.2014.QH13\_\_D16\_\_K1 hoặc 123.2015.ND-CP\_\_D28a. Không dùng
+    số dòng làm ID. Format cuối cùng chốt theo notebook 01_doc_luat.
 
 5.  Lưu chunk_text (có tiền tố, dùng cho mô hình) và display_text
     (nguyên văn, dùng để hiển thị trích dẫn).
@@ -237,7 +274,8 @@ nguyên văn nhưng đủ dài để tự đứng được.
 | **Trường trong chunks.jsonl** | **Ý nghĩa**                                            |
 |-------------------------------|--------------------------------------------------------|
 | chunk_id                      | Khóa chính, ổn định qua các phiên bản                  |
-| doc_id, dieu, khoan           | Thuộc văn bản nào, Điều nào, Khoản nào                 |
+| doc_id, dieu, khoan           | Thuộc văn bản nào, Điều nào (chuỗi), Khoản nào         |
+| amended_by                    | Các văn bản đã sửa đoạn này (rỗng nếu chưa bị sửa)     |
 | chunk_text                    | Có tiền tố ngữ cảnh, đã làm sạch                       |
 | display_text                  | Nguyên văn để trích dẫn                                |
 | url, accessed_at              | Nguồn tham chiếu hiển thị trên giao diện               |
@@ -520,7 +558,9 @@ vị trí chunk đúng đầu tiên:
 
 - docs/scope.md ghi rõ lĩnh vực đã chọn và lý do.
 
-- source_list.csv đủ 3 văn bản: số hiệu, URL, ngày tải, tình trạng hiệu lực.
+- source_list.csv đủ 10 văn bản: số hiệu, URL, ngày hiệu lực, tình trạng hiệu lực, ngày tải.
+
+- amendments.yaml đủ các thay đổi của văn bản sửa đổi; chunks.jsonl là bản hợp nhất.
 
 - Văn bản đã tách Chương/Điều/Khoản đủ trường; báo cáo EDA kho văn bản.
 
