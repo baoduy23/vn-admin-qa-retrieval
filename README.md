@@ -82,7 +82,19 @@ data/interim/    <doc_id>.docx, bản gốc chưa áp sửa đổi
 data/processed/  chunks.jsonl: 1 Điều = 1 đoạn, Điều dài quá 200 từ thì tách theo Khoản
 ```
 
-Bước tách Điều/Khoản đang làm thử trong `notebooks/01_doc_luat.ipynb`, chạy ổn thì chuyển thành script trong `src/data/`.
+Chạy lại từ raw đến kết quả baseline (từ gốc repo, theo đúng thứ tự):
+
+```bash
+python -m src.data.parse_law          # interim/*.docx → processed/units.jsonl (kiểm số Điều từng văn bản)
+python -m src.data.apply_amendments   # + raw/amendments.yaml → processed/units_current.jsonl, amendments_log.csv
+python -m src.data.chunk              # → processed/chunks.jsonl (433 chunk)
+python -m src.data.corpus_report      # → results/data_quality/corpus_report.md
+python -m src.data.split              # labels/questions.csv → splits/*_qgroups.csv
+python -m src.data.freeze             # kiểm tiêu chí freeze → data/dataset_manifest.json
+python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation (thêm --test để chạy test 1 lần)
+python -m src.retrieval.hard_negatives  # → processed/train_pairs.csv
+python -m pytest
+```
 
 ## Tài liệu
 

@@ -1,4 +1,5 @@
 __pycache__/
+.pytest_cache/
 *.pyc
 .venv/
 .env
@@ -12,5 +13,10 @@ data/raw/pdf/
 *.bin
 *.safetensors
 ~$*
-data/processed/
+# data/processed: file trung gian (units*.jsonl, log) không commit; riêng kho đã chốt
+# (chunks.jsonl) và cặp huấn luyện (train_pairs.csv) thì commit để cả nhóm dùng chung
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/chunks.jsonl
+!data/processed/train_pairs.csv
 data/raw/*.pdf

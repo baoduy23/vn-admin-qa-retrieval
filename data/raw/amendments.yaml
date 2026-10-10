@@ -16,20 +16,20 @@
 # Ngoài phạm vi (không ghi op): 07/2025 Điều 1 (NĐ 23 chứng thực), Điều 4 (NĐ 16 quốc tịch);
 # 04/2024 Điều 1 (TT 02/2020 quốc tịch), khoản 2 Điều 2 (thay Phụ lục danh mục tờ khai);
 # 18/2026 các Điều trừ Điều 13; 09/2022 Điều 1; NĐ 120/2025 chỉ là affected_by (đã ghi trong source_list.csv).
- 
+
 # ===================== NĐ 87/2020 → NĐ 123/2015 (hiệu lực 15/9/2020) =====================
 - id: 87-2020__123__D12K1
   op: repeal
   target: {doc: 123.2015.ND-CP, dieu: "12", khoan: "1"}
   source: {doc: 87.2020.ND-CP, dieu: "25", khoan: "2"}
   effective_date: 2020-09-15
- 
+
 - id: 87-2020__123__D12K2
   op: repeal
   target: {doc: 123.2015.ND-CP, dieu: "12", khoan: "2"}
   source: {doc: 87.2020.ND-CP, dieu: "25", khoan: "2"}
   effective_date: 2020-09-15
- 
+
 # ===================== NĐ 104/2022 → NĐ 123/2015 (hiệu lực 01/01/2023) =====================
 - id: 104-2022__123__D2K1
   op: remove_phrase
@@ -37,7 +37,7 @@
   source: {doc: 104.2022.ND-CP, dieu: "13", khoan: "2"}
   phrase: "Trong giai đoạn chuyển tiếp, người yêu cầu đăng ký hộ tịch phải xuất trình giấy tờ chứng minh nơi cư trú."
   effective_date: 2023-01-01
- 
+
 # ===================== TT 09/2022 → TT 04/2020 (hiệu lực 01/01/2023) =====================
 - id: 09-2022__04-2020__D8K1
   op: remove_phrase
@@ -45,193 +45,193 @@
   source: {doc: 09.2022.TT-BTP, dieu: "2"}
   phrase: "Sổ hộ khẩu; Sổ tạm trú; "
   effective_date: 2023-01-01
- 
+
 - id: 09-2022__04-2020__D9K3b
   op: remove_phrase
   target: {doc: 04.2020.TT-BTP, dieu: "9", khoan: "3", diem: "b"}
   source: {doc: 09.2022.TT-BTP, dieu: "2"}
   phrase: "Sổ hộ khẩu, Sổ tạm trú, "
   effective_date: 2023-01-01
- 
+
 # ===================== TT 04/2024 → TT 04/2020 (hiệu lực 06/6/2024) =====================
 - id: 04-2024__04-2020__D3K2
   op: replace
   target: {doc: 04.2020.TT-BTP, dieu: "3", khoan: "2"}
   source: {doc: 04.2024.TT-BTP, dieu: "2", khoan: "1", diem: "a"}
   effective_date: 2024-06-06
- 
+
 - id: 04-2024__04-2020__D3K6
   op: insert
   target: {doc: 04.2020.TT-BTP, dieu: "3", khoan: "6", after_khoan: "5"}
   source: {doc: 04.2024.TT-BTP, dieu: "2", khoan: "1", diem: "b"}
   effective_date: 2024-06-06
- 
+
 - id: 04-2024__04-2020__D18K2
   op: replace
   target: {doc: 04.2020.TT-BTP, dieu: "18", khoan: "2"}
   source: {doc: 04.2024.TT-BTP, dieu: "2", khoan: "3"}
   effective_date: 2024-06-06
- 
+
 # ===================== NĐ 07/2025 → NĐ 123/2015 (hiệu lực từ ngày ký 09/01/2025) =====================
 - id: 07-2025__123__D1
   op: replace                      # thay cả Điều 1
   target: {doc: 123.2015.ND-CP, dieu: "1"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "1"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D2K1
   op: replace                      # áp SAU op 104 ở trên
   target: {doc: 123.2015.ND-CP, dieu: "2", khoan: "1"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "2"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D2K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "2", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "2"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D3-ten
   op: rename
   target: {doc: 123.2015.ND-CP, dieu: "3"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "3", diem: "a"}
   new_title: "Cách thức nộp, tiếp nhận hồ sơ đăng ký hộ tịch, tiến hành xác minh khi giải quyết hồ sơ đăng ký hộ tịch"
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D3K1
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "3", khoan: "1"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "3", diem: "b"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D3K5
   op: insert
   target: {doc: 123.2015.ND-CP, dieu: "3", khoan: "5", after_khoan: "4"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "3", diem: "c"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D4K1c
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "4", khoan: "1", diem: "c"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "4"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D9K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "9", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "5"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D22K4
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "22", khoan: "4"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "6"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D23K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "23", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "7"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D28a-c
   op: insert                       # thêm Mục 5 Chương III: Điều 28a, 28b, 28c
   target: {doc: 123.2015.ND-CP, dieu: "28a", after_dieu: "28"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "8"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D30K3
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "30", khoan: "3"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "9"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__123__D10K1
   op: repeal                       # k10, dễ sót vì nằm cuối Điều 2
   target: {doc: 123.2015.ND-CP, dieu: "10", khoan: "1"}
   source: {doc: 07.2025.ND-CP, dieu: "2", khoan: "10"}
   effective_date: 2025-01-09
- 
+
 # ===================== NĐ 07/2025 → NĐ 87/2020 (hiệu lực 09/01/2025) =====================
 - id: 07-2025__87__D2K2
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "2", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "1"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__87__D8K2
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "8", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "2"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__87__D12K3c
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "12", khoan: "3", diem: "c"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "3"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__87__D13K1
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "13", khoan: "1"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "4"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__87__D13K2
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "13", khoan: "2"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "4"}
   effective_date: 2025-01-09
- 
+
 - id: 07-2025__87__D19K7
   op: replace
   target: {doc: 87.2020.ND-CP, dieu: "19", khoan: "7"}
   source: {doc: 07.2025.ND-CP, dieu: "3", khoan: "5"}
   effective_date: 2025-01-09
- 
+
 # ===================== NĐ 18/2026 → NĐ 123/2015 (Điều 13, hiệu lực 15/01/2026) =====================
 - id: 18-2026__123__D2K1
   op: replace                      # áp SAU op 07/2025 cùng chỗ
   target: {doc: 123.2015.ND-CP, dieu: "2", khoan: "1"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "1"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D22K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "22", khoan: "2"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "2"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D24K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "24", khoan: "2"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "3"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D26K1c
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "26", khoan: "1", diem: "c"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "4", diem: "a"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D26K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "26", khoan: "2"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "4", diem: "b"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D27K2
   op: replace
   target: {doc: 123.2015.ND-CP, dieu: "27", khoan: "2"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "5"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D26K3
   op: repeal
   target: {doc: 123.2015.ND-CP, dieu: "26", khoan: "3"}
   source: {doc: 18.2026.ND-CP, dieu: "13", khoan: "6"}
   effective_date: 2026-01-15
- 
+
 - id: 18-2026__123__D27K3
   op: repeal
   target: {doc: 123.2015.ND-CP, dieu: "27", khoan: "3"}
