@@ -12,3 +12,5 @@ data/raw/pdf/
 *.bin
 *.safetensors
 ~$*
+data/processed/
+data/raw/*.pdf
