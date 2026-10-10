@@ -234,17 +234,19 @@ thành: ...", chunk nguyên văn thì đoạn rất khó hiểu và dễ trả v
 cũ đã bị sửa. Vì vậy kho dùng bản hợp nhất:
 
 1.  Đọc phần sửa đổi trong văn bản sửa đổi, mỗi thay đổi ghi thành một
-    dòng trong data/raw/amendments.yaml: văn bản sửa đổi, văn bản bị
-    sửa, vị trí (Điều, Khoản, Điểm), kiểu thao tác, câu chữ mới.
+    phần tử trong data/raw/amendments.yaml: id, op, target (văn bản, Điều,
+    Khoản, Điểm bị sửa), source (Điều, Khoản trong văn bản sửa đổi chứa
+    đoạn trích “...”), effective_date. Câu chữ mới không gõ tay: code lấy
+    đoạn trích trong unit source.
 
-2.  10 kiểu thao tác: replace_dieu, replace_khoan, replace_diem,
-    insert_khoan, insert_dieu, rename_dieu, repeal, remove_phrase,
-    replace_phrase, note. Bỏ cụm từ "sổ hộ khẩu, sổ tạm trú" (104/2022,
-    09/2022) là remove_phrase; câu chữ trong văn bản gốc có thể khác chữ
-    hoa, dấu câu nên phải kiểm tra tay. Thẩm quyền theo chính quyền 2
-    cấp (NĐ 120/2025) không sửa câu chữ, ghi bằng note gắn vào Điều liên
-    quan; thời hạn mới trong mục I Phụ lục NĐ 120 thì chunk riêng, không
-    chỉ ghi note.
+2.  5 kiểu thao tác: replace (thay Điều, Khoản hoặc Điểm), insert (thêm
+    Khoản hoặc Điều mới như 28a), repeal (bãi bỏ), remove_phrase (bỏ cụm
+    từ), rename (đổi tên Điều). Bỏ cụm từ "sổ hộ khẩu, sổ tạm trú"
+    (104/2022, 09/2022) là remove_phrase; câu chữ trong văn bản gốc có thể
+    khác chữ hoa, dấu câu nên phải kiểm tra tay. Thẩm quyền theo chính
+    quyền 2 cấp (NĐ 120/2025) không sửa câu chữ nên không có op: ghi ở
+    cột affected_by của source_list.csv (chunk mang theo cột này); thời
+    hạn mới trong mục I Phụ lục NĐ 120 thì chunk riêng.
 
 3.  Chép câu chữ thì bỏ dấu “ ” ở đầu và cuối đoạn trích. Bãi bỏ thì
     không đánh số lại Khoản.
@@ -254,8 +256,10 @@ cũ đã bị sửa. Vì vậy kho dùng bản hợp nhất:
     sửa nhiều lần (ví dụ khoản 1 Điều 2 NĐ 123 bị 07/2025 rồi 18/2026
     thay) thì bản sau cùng thắng.
 
-5.  Code áp amendments.yaml sau bước tách cấu trúc, trước bước chunk.
-    Đoạn bị sửa ghi lại amended_by để hiển thị nguồn.
+5.  Code áp amendments.yaml sau bước tách cấu trúc, trước bước chunk
+    (python -m src.data.apply_amendments). Đoạn bị sửa ghi lại
+    amended_by để hiển thị nguồn; kết quả từng op ở
+    data/processed/amendments_log.csv.
 
 ## 6 D03 Chia đoạn (chunking)
 

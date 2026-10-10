@@ -36,7 +36,9 @@ Văn bản ảnh hưởng hiệu lực nhưng không sửa câu chữ:
 
 | doc_id | Văn bản | Phần dùng |
 |---|---|---|
-| 120.2025.ND-CP | Nghị định 120/2025/NĐ-CP quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp | Điều 4–8 và **mục I Phụ lục** (thời hạn mới, ví dụ kết hôn có yếu tố nước ngoài còn 05 ngày làm việc thay vì 15 ngày theo Luật) được chunk riêng; Điều 23 khoản 3: khi khác văn bản khác thì áp dụng NĐ 120. Hiệu lực 01/7/2025, hết hiệu lực từ 01/3/2027 |
+| 120.2025.ND-CP | Nghị định 120/2025/NĐ-CP quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp | Điều 4–8, Điều 23, khoản 1 Điều 24 và **mục I Phụ lục** (thời hạn mới, ví dụ kết hôn có yếu tố nước ngoài còn 05 ngày làm việc thay vì 15 ngày theo Luật) được chunk riêng; Điều 23 khoản 3: khi khác văn bản khác thì áp dụng NĐ 120. Hiệu lực 01/7/2025, hết hiệu lực từ 01/3/2027 |
+
+Ngoài phần sửa câu chữ (đã nằm trong bản hợp nhất), phần có nội dung tự thân của văn bản sửa đổi được chunk riêng, cấu hình ở `configs/chunking.yaml`: 104/2022 Điều 14 và khoản 3 Điều 15 (khai thác thông tin cư trú thay sổ hộ khẩu); 09/2022 khoản 2 Điều 3, 04/2024 Điều 3, 07/2025 Điều 5 (chuyển tiếp hồ sơ đang giải quyết). 18/2026 chỉ áp qua `amendments.yaml`, không chunk riêng. Kho cuối: **433 chunk từ 9 văn bản** (chi tiết `results/data_quality/corpus_report.md`).
 
 Url, ngày hiệu lực, tình trạng hiệu lực và ngày tải từng văn bản ghi trong `data/raw/source_list.csv` (cột `amended_by`: văn bản sửa câu chữ; `affected_by`: văn bản chỉ ảnh hưởng hiệu lực).
 

@@ -3,4 +3,4 @@ lowercase: false            # lowercase là lựa chọn của từng mô hình,
 remove_stopwords: false
 segmenter:
   name: underthesea         # chốt một công cụ duy nhất
-  version: ""
+  version: "9.5.0"           # bản đã dùng để tạo text_seg trong chunks.jsonl; khác bản thì text_seg có thể lệch

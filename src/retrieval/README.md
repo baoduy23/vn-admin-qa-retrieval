@@ -6,6 +6,9 @@
 |---|---|
 | `bm25.py` | BM25 Okapi tự viết, không cần thư viện. `BM25(docs, ids).search(query, k)` trả `[(chunk_id, score), ...]` |
 | `metrics.py` | `recall_at_k`, `reciprocal_rank`, `ndcg_at_k` và `evaluate(run, qrels_all, ks)` trả bảng trung bình |
+| `tfidf.py` | TF-IDF + cosine, cùng giao diện với BM25: `TFIDF(docs, ids).search(query, k)` |
+| `evaluate.py` | Baseline TF-IDF/BM25 × âm tiết/từ: chọn tham số và ngưỡng từ chối trên validation, `--test` chạy test 1 lần → `results/retrieval/` |
+| `hard_negatives.py` | Top-20 BM25 mức từ trên train, bỏ chunk đúng và chunk cùng Điều → `data/processed/train_pairs.csv` (1 positive : ~4 negative) |
 
 ```python
 import json
@@ -22,8 +25,7 @@ bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 
 | Việc | Người | Ghi chú |
 |---|---|---|
-| TF-IDF, chạy BM25 trên validation, hard negative top-20 | TV1 | Tham số trong `configs/retrieval_baseline.yaml` |
-| Script đánh giá chung (gọi `metrics.evaluate`) | TV2 | Mọi mô hình chạy qua cùng 1 script |
+| Script đánh giá chung (gọi `metrics.evaluate`) | TV2 | Mọi mô hình chạy qua cùng 1 script; `evaluate.py` của baseline dùng tạm được, TV2 thay hoặc mở rộng |
 | SBERT, hybrid, rerank cross-encoder / PhoBERT | TV3 | Cài thêm các dòng đang comment trong `requirements.txt` |
 
 ## Quy ước chung cho mọi mô hình

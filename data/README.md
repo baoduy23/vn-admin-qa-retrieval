@@ -8,10 +8,13 @@ Dữ liệu đi một chiều: `raw → interim → processed`. Thư mục sau l
 | `raw/source_list.csv` | Danh sách văn bản đã tải. Cột: `doc_id, title, source_type, url, issuing_level`, `amended_by` (văn bản sửa câu chữ, nạp vào `amendments.yaml`), `affected_by` (văn bản đổi hiệu lực mà không sửa câu chữ, ví dụ NĐ 120/2025), `effective_date` (ngày có hiệu lực), `status` (tình trạng hiệu lực tại ngày tải), `accessed_at, in_scope`. Ý nghĩa từng cột: mục 3.4 [hướng dẫn TV1](../docs/huong-dan-thanh-vien-1.md) | TV1, điền tay | Có |
 | `raw/amendments.yaml` | Phần sửa đổi, bổ sung, bãi bỏ lấy từ văn bản sửa đổi, mỗi dòng một thao tác (xem mục bên dưới) | TV1, viết tay | Có |
 | `interim/` | `<doc_id>.docx`: toàn văn **bản gốc, chưa áp sửa đổi**, là đầu vào duy nhất của code | TV1, dán Word | Có |
-| `processed/chunks.jsonl` | 1 dòng = 1 đoạn để lập chỉ mục (1 Điều, hoặc 1 Khoản nếu Điều dài), **đã áp `amendments.yaml`** | Script tách luật (đang làm trong notebook) | Có |
+| `processed/units.jsonl`, `units_current.jsonl`, `amendments_log.csv` | Đơn vị Điều/Khoản/Điểm trước và sau khi áp `amendments.yaml`, log từng op | `parse_law.py`, `apply_amendments.py` | Không (sinh lại được) |
+| `processed/chunks.jsonl` | 1 dòng = 1 đoạn để lập chỉ mục (1 Điều, hoặc 1 Khoản nếu Điều dài), **đã áp `amendments.yaml`**; schema ở mục bên dưới | `src/data/chunk.py` | Có |
+| `processed/train_pairs.csv` | Cặp (câu hỏi, chunk) có nhãn 1/0, hard negative từ top-20 BM25 trên train, cho TV3 | `src/retrieval/hard_negatives.py` | Có |
 | `labels/questions.csv` | Câu hỏi: `question_id, question_group_id, question, type, answer_text, source, annotator` | Cả nhóm viết, TV2 quản | Có |
 | `labels/qrels.csv` | Nhãn liên quan: `question_id, chunk_id, relevance` (2 = trả lời trực tiếp, 1 = liên quan một phần) | Gán nhãn chéo, TV2 quản | Có |
-| `splits/` | `question_group_id` của train / validation / test | TV2 | Có |
+| `splits/` | `question_group_id` của train / validation / test | `src/data/split.py`, TV2 quản | Có |
+| `dataset_manifest.json` | Số văn bản, chunk, câu hỏi; sha256 của chunks/questions/qrels; seed, commit; `review_status` (draft/frozen) | `src/data/freeze.py` | Có |
 
 ## Văn bản trong `raw/`
 
@@ -24,7 +27,7 @@ Dữ liệu đi một chiều: `raw → interim → processed`. Thư mục sau l
 | 04.2024.TT-BTP | Thông tư 04/2024/TT-BTP sửa đổi TT 02/2020 (quốc tịch) và TT 04/2020 (hộ tịch) | `04.2024.TT-BTP.html` | 4 Điều; chỉ **Điều 2** (sửa TT 04/2020) liên quan hộ tịch. Hiệu lực từ 06/06/2024 |
 | 87.2020.ND-CP | Nghị định 87/2020/NĐ-CP về CSDL hộ tịch điện tử, đăng ký hộ tịch trực tuyến | `87.2020.ND-CP.html` | 25 Điều; văn bản gốc. Điều 25 khoản 2 bãi bỏ khoản 1, 2 Điều 12 NĐ 123; bị sửa bởi 07/2025 (Điều 3) |
 | 104.2022.ND-CP | Nghị định 104/2022/NĐ-CP sửa đổi quy định về nộp, xuất trình sổ hộ khẩu, sổ tạm trú | `104.2022.ND-CP.html` | Văn bản sửa đổi; phần hộ tịch chỉ có Điều 13 khoản 2 (bãi bỏ một cụm từ ở khoản 1 Điều 2 NĐ 123) |
-| 120.2025.ND-CP | Nghị định 120/2025/NĐ-CP quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp | `120.2025.ND-CP.html` | Thẩm quyền theo chính quyền 2 cấp, không sửa câu chữ văn bản khác (cột `affected_by`). **Phụ lục mục I đổi thời hạn giải quyết** (ví dụ kết hôn có yếu tố nước ngoài 05 ngày làm việc) nên phải chunk riêng, không chỉ ghi `note` |
+| 120.2025.ND-CP | Nghị định 120/2025/NĐ-CP quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp | `120.2025.ND-CP.html` | Thẩm quyền theo chính quyền 2 cấp, không sửa câu chữ văn bản khác (cột `affected_by`). **Phụ lục mục I đổi thời hạn giải quyết** (ví dụ kết hôn có yếu tố nước ngoài 05 ngày làm việc) nên chunk riêng Điều 4–8, 23, khoản 1 Điều 24 và mục I Phụ lục |
 | 09.2022.TT-BTP | Thông tư 09/2022/TT-BTP bãi bỏ một số nội dung tại các Thông tư về trợ giúp pháp lý, hộ tịch | `interim/09.2022.TT-BTP.docx` (tải từ vbpl) | Chỉ **Điều 2** (bỏ "sổ hộ khẩu, sổ tạm trú" ở khoản 1 Điều 8 và điểm b khoản 3 Điều 9 TT 04/2020) liên quan hộ tịch. Hiệu lực 01/01/2023 |
 | 18.2026.ND-CP | Nghị định 18/2026/NĐ-CP sửa đổi một số nghị định để cắt giảm, đơn giản hóa thủ tục hành chính thuộc Bộ Tư pháp | `interim/18.2026.ND-CP.docx` (tải từ vbpl) | Chỉ **Điều 13** (sửa khoản 1 Điều 2, khoản 2 Điều 22, 24, 27, Điều 26 NĐ 123) liên quan hộ tịch. Hiệu lực 15/01/2026 |
 
@@ -35,16 +38,26 @@ File `.html` là trang thuvienphapluat.vn lưu bằng Ctrl+S ("Trang web, chỉ 
 Văn bản sửa đổi viết kiểu "sửa Điều X thành: ...", để nguyên mà chunk thì đoạn rất khó hiểu. Nhóm chốt **hợp nhất**: code tách văn bản gốc trong `interim/`, rồi áp từng dòng của `amendments.yaml` để ra bản đang có hiệu lực, chỉ bản này được chunk.
 
 - Áp theo thứ tự ngày hiệu lực (07/2025 trước 18/2026); cùng một chỗ bị sửa nhiều lần thì bản sau cùng thắng.
-- Mỗi dòng gồm văn bản sửa đổi, văn bản bị sửa, vị trí (Điều, Khoản, Điểm), kiểu thao tác và câu chữ mới.
-- 10 kiểu thao tác: `replace_dieu`, `replace_khoan`, `replace_diem`, `insert_khoan`, `insert_dieu`, `rename_dieu`, `repeal`, `remove_phrase`, `replace_phrase`, `note`.
-- `note` dùng cho thay đổi không sửa câu chữ (thẩm quyền theo 120/2025): gắn ghi chú vào Điều liên quan, không đổi nội dung.
+- Mỗi phần tử gồm `id`, `op`, `target` (chỗ bị sửa), `source` (Điều, Khoản trong văn bản sửa đổi chứa đoạn trích “...”; code tự lấy câu chữ mới từ đây) và `effective_date`. Giải thích đầy đủ ở đầu file yaml.
+- 5 kiểu thao tác: `replace` (thay Điều/Khoản/Điểm), `insert` (thêm Khoản hoặc Điều như 28a), `repeal`, `remove_phrase`, `rename`.
+- NĐ 120/2025 không sửa câu chữ nên không có op: ghi ở cột `affected_by` của `source_list.csv`, chunk mang theo cột này.
 - Bỏ cụm từ theo 104/2022 và 09/2022 là `remove_phrase`. Câu chữ trong văn bản gốc có thể khác chữ hoa, dấu câu so với văn bản sửa đổi (ví dụ "Sổ hộ khẩu; Sổ tạm trú ;" trong TT 04/2020), phải kiểm tra tay.
-- Chép câu chữ thì bỏ dấu “ ” ở đầu và cuối đoạn trích. Bãi bỏ thì không đánh số lại Khoản.
-- Định dạng chi tiết từng trường chốt khi viết file.
+- Bãi bỏ thì không đánh số lại Khoản; unit vẫn giữ trong `units_current.jsonl` với `status=repealed`, bước chunk mới bỏ ra.
 
 ## Schema `processed/chunks.jsonl`
 
-Chốt khi chuyển notebook tách luật thành script. Tối thiểu cần: `chunk_id` (ổn định, qrels trỏ vào đây), `text` (đưa vào mô hình), `display_text` (trích dẫn trên web), nguồn (`doc_id`, `dieu`, `khoan`, `diem`) và `amended_by` (các văn bản đã sửa đoạn này). `dieu` lưu dạng **chuỗi** vì có Điều chèn thêm như `28a`.
+Mỗi dòng 1 chunk, do `python -m src.data.chunk` sinh ra:
+
+| Trường | Ý nghĩa |
+|---|---|
+| `chunk_id` | Ổn định, qrels trỏ vào đây: `<doc_id>__D<dieu>`, thêm `__K<khoan>` khi tách theo Khoản, `__P<n>` khi Khoản dài phải chia phần; Phụ lục NĐ 120: `120.2025.ND-CP__PL1__K1__P1` |
+| `chunk_text` | Tiền tố "văn bản \| Điều \| Khoản" + nội dung, đưa vào mô hình (mức âm tiết) |
+| `text_seg` | `chunk_text` đã tách từ bằng underthesea, cho mô hình mức từ |
+| `display_text` | Nguyên văn không tiền tố, để trích dẫn trên web |
+| `doc_id`, `doc_title`, `dieu`, `dieu_title`, `khoan`, `phan`, `chuong`, `chuong_ten`, `muc`, `muc_ten` | Vị trí trong văn bản; `dieu` là **chuỗi** vì có Điều 28a |
+| `n_tokens` | Số từ của `text_seg`, tối đa 200 |
+| `amended_by`, `amendment_ops`, `affected_by`, `effective_from` | Văn bản và op đã sửa đoạn này, văn bản ảnh hưởng hiệu lực, ngày hiệu lực của lần sửa gần nhất |
+| `url`, `accessed_at` | Nguồn và ngày tải, lấy từ `source_list.csv` |
 
 ## Quy tắc
 

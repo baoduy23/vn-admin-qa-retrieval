@@ -1,0 +1,35 @@
+{
+  "dataset_version": "v1",
+  "domain": "ho_tich",
+  "n_documents": 10,
+  "n_documents_chunked": 9,
+  "n_chunks": 433,
+  "n_questions": 80,
+  "n_question_groups": 51,
+  "n_questions_by_type": {
+    "confusable": 9,
+    "direct": 20,
+    "multi_intent": 6,
+    "out_of_scope": 6,
+    "paraphrase": 27,
+    "underspecified": 6,
+    "unsupported": 6
+  },
+  "n_questions_by_split": {
+    "train": 33,
+    "validation": 16,
+    "test": 31
+  },
+  "chunks_sha256": "8b646830eb641520eb2974d7fc8e8aa02f7709c1ef441c298af0fd6ab1a7f1f3",
+  "questions_sha256": "86e73550fecf72a08534680a26175507896f10b798514efea0d1f8d64355b4b1",
+  "qrels_sha256": "661560e6459ce00438c868c6db901621955036fe67a269678e5cee0734cfcc41",
+  "segmenter": "underthesea 9.5.0",
+  "random_seed": 42,
+  "source_commit": "a12432abdbd4daae286e256c268aa76c653f2208",
+  "created_at": "2026-10-10T20:48:19+00:00",
+  "review_status": "draft",
+  "warnings": [
+    "80 câu source=generated: người trong nhóm phải duyệt (mục 7.1.5), test nên ưu tiên câu người viết",
+    "chưa có results/data_quality/label_agreement.md (Cohen kappa, TV2 chủ trì)"
+  ]
+}

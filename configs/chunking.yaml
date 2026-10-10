@@ -1,5 +1,21 @@
-strategy: by_field          # mỗi trường của thủ tục là một đoạn
-max_tokens: 200             # đếm theo từ sau tách từ; chừa chỗ cho câu hỏi khi ghép cặp vào PhoBERT/cross-encoder (giới hạn 256 subword)
-overlap_sentences: 1
-add_context_prefix: true    # "<Tên thủ tục> | <Tên mục>: ..."
-chunk_id_format: "{doc_id}__{field}__{index}"
+strategy: dieu_then_khoan     # 1 Điều = 1 đoạn; Điều dài quá max_tokens thì tách theo Khoản (rồi theo Điểm nếu Khoản vẫn dài)
+max_tokens: 200               # đếm số từ của chunk_text (đã có tiền tố) sau tách từ underthesea;
+                              # chừa chỗ cho câu hỏi khi ghép cặp vào PhoBERT/cross-encoder (giới hạn 256 subword)
+add_context_prefix: true      # "Nghị định 123/2015/NĐ-CP | Điều 16. Thủ tục đăng ký khai sinh | Khoản 1: ..."
+chunk_id_format: "{doc_id}__D{dieu}[__K{khoan}][__P{phan}]"   # Phụ lục: {doc_id}__PL{so}__K{khoan}
+drop_repealed: true           # unit có status = repealed (sau apply_amendments) không vào kho
+
+# Phần nào của từng văn bản được chunk (mục B4 file rà soát + docs/scope.md).
+# all = cả văn bản; dieu = danh sách Điều giữ nguyên; khoan = {Điều: [Khoản]} chỉ giữ vài Khoản;
+# phu_luc = các mục La Mã của Phụ lục được giữ. Văn bản không có tên ở đây thì không chunk.
+include:
+  60.2014.QH13: all
+  123.2015.ND-CP: all
+  04.2020.TT-BTP: all
+  87.2020.ND-CP: all
+  07.2025.ND-CP:    {dieu: ["5"]}                         # Điều 1, 4 ngoài phạm vi; Điều 2, 3 đã áp qua amendments.yaml
+  04.2024.TT-BTP:   {dieu: ["3"]}                         # quy định chuyển tiếp; Điều 1 là quốc tịch
+  104.2022.ND-CP:   {dieu: ["14"], khoan: {"15": ["3"]}}  # khai thác thông tin cư trú thay sổ hộ khẩu
+  09.2022.TT-BTP:   {khoan: {"3": ["2"]}}                 # chuyển tiếp hồ sơ đăng ký khai sinh
+  120.2025.ND-CP:   {dieu: ["4", "5", "6", "7", "8", "23"], khoan: {"24": ["1"]}, phu_luc: ["I"]}
+  # 18.2026.ND-CP: phần hộ tịch (Điều 13) đã áp qua amendments.yaml, phần còn lại ngoài phạm vi

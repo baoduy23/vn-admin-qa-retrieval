@@ -31,7 +31,9 @@ RE_PL_MUC = re.compile(r"^([IVXLC]+)\.\s+(.*)$")  # I II trong phu luc
 def read_docx_lines(path):
     """Lấy text các đoạn văn theo thứ tự, BỎ bảng (bảng = header quốc hiệu + chữ ký)."""
     d = docx.Document(path)
-    return [p.text for p in d.paragraphs]
+    # 1 đoạn Word có thể chứa ngắt dòng mềm (Shift+Enter), vd "Chương III\nMẪU GIẤY TỜ...":
+    # tách ra từng dòng, không thì regex Chương/Mục không bắt được
+    return [line for p in d.paragraphs for line in p.text.split("\n")]
 
 
 RE_QUOTE_END = re.compile(r"”\s*[.;,]?$")  #dòng kết thúc đoạn trích: ..." ..." ...";
@@ -73,13 +75,14 @@ def parse_doc(path, log=None):
                 cur["lines"].append(s)
             continue
  
-        if expect_title:                      # tên Chương / Phụ lục nằm ở dòng kế
-            if s.isupper():
-                ctx[expect_title] = s
+        if expect_title:                      # tên Chương / Mục / Phụ lục nằm ở (các) dòng kế
+            is_heading = any(r.match(s) for r in (RE_CHUONG, RE_MUC, RE_DIEU, RE_PHULUC, RE_PL_MUC))
+            if s.isupper() and not is_heading:
+                # tên dài bị xuống dòng ("ĐĂNG KÝ THAY ĐỔI, CẢI CHÍNH," / "BỔ SUNG HỘ TỊCH") → nối lại
+                ctx[expect_title] = f"{ctx[expect_title]} {s}" if ctx.get(expect_title) else s
                 if cur is not None and cur["level"] == "phu_luc":
-                    cur["phu_luc_ten"] = s
-                expect_title = None
-                continue
+                    cur["phu_luc_ten"] = ctx[expect_title]
+                continue                      # giữ expect_title: dòng sau vẫn có thể là phần tiếp của tên
             expect_title = None
  
         if m := RE_PHULUC.match(s):
@@ -108,6 +111,7 @@ def parse_doc(path, log=None):
             continue
         if started and (m := RE_MUC.match(s)):
             ctx.update(muc=m.group(1), muc_ten=m.group(2) or None)
+            expect_title = None if m.group(2) else "muc_ten"
             continue
         if m := RE_DIEU.match(s):
             started = True
