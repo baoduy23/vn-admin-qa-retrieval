@@ -1,5 +1,5 @@
 question_id,question_group_id,question,type,answer_text,source,annotator
-Q0001,G001,Hồ sơ đăng ký khai sinh gồm những giấy tờ gì?,direct,"Nộp tờ khai theo mẫu và Giấy chứng sinh (không có thì văn bản người làm chứng hoặc giấy cam đoan về việc sinh), xuất trình giấy tờ tùy thân.",generated,"TV1-Duy (Claude soạn, chờ duyệt)"
+Q0001,G001,Hồ sơ đăng ký khai sinh gồm những giấy tờ gì?,direct,"Nộp tờ khai theo mẫu và Giấy chứng sinh (không có thì văn bản người làm chứng hoặc giấy cam đoan về việc sinh), xuất trình giấy tờ tùy thân.",generated,"TV1-Duy"
 Q0002,G001,Con mới đẻ thì đi làm giấy khai sinh cần mang theo giấy gì?,paraphrase,"Nộp tờ khai theo mẫu và Giấy chứng sinh (không có thì văn bản người làm chứng hoặc giấy cam đoan về việc sinh), xuất trình giấy tờ tùy thân.",generated,"TV1-Duy (Claude soạn, chờ duyệt)"
 Q0003,G001,lam giay khai sinh cho be can giay to gi,paraphrase,"Nộp tờ khai theo mẫu và Giấy chứng sinh (không có thì văn bản người làm chứng hoặc giấy cam đoan về việc sinh), xuất trình giấy tờ tùy thân.",generated,"TV1-Duy (Claude soạn, chờ duyệt)"
 Q0004,G002,Thời hạn đăng ký khai sinh cho trẻ là bao lâu?,direct,"Trong 60 ngày kể từ ngày sinh, cha hoặc mẹ có trách nhiệm đăng ký khai sinh cho con.",generated,"TV1-Duy (Claude soạn, chờ duyệt)"
