@@ -21,9 +21,9 @@ Chi tiết từng việc nằm trong [file phân công trên Google Docs](https:
 |---|---|---|---|---|
 | TV1 | Duy | Dữ liệu + baseline | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản/Điểm, hợp nhất văn bản sửa đổi, làm sạch, chia đoạn có tiền tố "tên văn bản \| Điều", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 (hard negative) |
 | TV2 | Khang | Bộ test + đánh giá | Guideline gán nhãn (7 loại câu, relevance 2/1); chia người viết và người gán nhãn; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi; 1 script đánh giá chung (Recall@k, MRR, NDCG, tỷ lệ từ chối); chỉ số câu trả lời (F1, đúng nguồn, faithfulness); trưởng phần phân tích lỗi | Cả nhóm (script đánh giá, split) |
-| TV3 | | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
-| TV4 | | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
-| TV5 | | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
+| TV3 | Tín | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
+| TV4 | Quân | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
+| TV5 | Huy | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
 
 Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác, không tự gán nhãn câu mình viết. Ai làm phần nào viết phần đó trong báo cáo. Lộ trình: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
 
