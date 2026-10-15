@@ -46,11 +46,13 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 ```
 data/raw/          văn bản gốc (.doc, .pdf, .html), bất biến; source_list.csv, amendments.yaml
 data/interim/      bản .docx để code đọc
-data/processed/    chunks.jsonl (text, text_seg, display_text)
+data/processed/    chunks.jsonl (433 chunk; text, text_seg, display_text), train_pairs.csv (hard negative)
 data/labels/       questions.csv, qrels.csv, annotation_guideline.md
 data/splits/       question_group_id của train / validation / test
+data/dataset_manifest.json   số liệu + sha256 của Dataset v1 (freeze)
 configs/           cấu hình tiền xử lý, chunking, baseline, split
 src/data/          làm sạch, tách luật, chunking, split
+src/labels/        gán nhãn chéo, Cohen's kappa
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
 src/app/           giao diện hỏi đáp
 notebooks/         thử nghiệm trước khi chuyển thành script (01_doc_luat.ipynb)
@@ -60,7 +62,7 @@ artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
 
-Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
+Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
 
 ## Chạy thử
 
@@ -89,6 +91,8 @@ python -m src.data.parse_law          # interim/*.docx → processed/units.jsonl
 python -m src.data.apply_amendments   # + raw/amendments.yaml → processed/units_current.jsonl, amendments_log.csv
 python -m src.data.chunk              # → processed/chunks.jsonl (433 chunk)
 python -m src.data.corpus_report      # → results/data_quality/corpus_report.md
+python -m src.labels.sample_double   # phân người gán nhãn chéo + 20% gán đôi → labels/label_assignments.csv
+python -m src.labels.kappa --a A.csv --b B.csv --out results/data_quality/label_agreement
 python -m src.data.split              # labels/questions.csv → splits/*_qgroups.csv
 python -m src.data.freeze             # kiểm tiêu chí freeze → data/dataset_manifest.json
 python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation (thêm --test để chạy test 1 lần)

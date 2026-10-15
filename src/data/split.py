@@ -1,87 +1,127 @@
-"""Chia câu hỏi thành train / validation / test THEO NHÓM (D06, mục 9.1 hướng dẫn TV1).
+"""Chia câu hỏi thành train / validation / test theo NHÓM, phân tầng theo loại câu.
 
-Mọi câu cùng question_group_id nằm chung một tập, để câu diễn đạt lại không rò từ train sang test.
-Mỗi nhóm lấy type xuất hiện nhiều nhất làm "type của nhóm", rồi chia riêng từng type theo tỉ lệ
-trong configs/split.yaml (stratify), nên tập nào cũng có đủ các loại, kể cả out_of_scope và unsupported.
+    python -m src.data.split            (seed, tỉ lệ lấy trong configs/split.yaml)
 
-Đầu vào : data/labels/questions.csv, configs/split.yaml
-Đầu ra  : data/splits/{train,validation,test}_qgroups.csv  (chỉ 1 cột question_group_id)
-
-Chạy từ gốc repo:  python -m src.data.split
-Chạy lại khi cả nhóm đã viết xong câu hỏi; sau khi freeze thì KHÔNG chạy lại (test bị khóa).
+- Đơn vị chia là question_group_id: mọi cách hỏi của một ý nằm cùng một tập.
+- Loại của nhóm = type của câu gốc (câu có question_id nhỏ nhất trong nhóm).
+- Mỗi loại được chia ~40/20/40; hoán đổi nhóm cùng loại để số CÂU mỗi tập sát
+  120/60/120 (hoặc 40%/20%/40% tổng số câu nếu khác 300).
+- Ghi train_qgroups.csv, validation_qgroups.csv, test_qgroups.csv vào data/splits/.
+Chạy lại với cùng dữ liệu và seed thì ra đúng kết quả cũ.
 """
+from __future__ import annotations
+
+import argparse
 import csv
-import math
 import random
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[2]  # gốc repo; freeze.py, evaluate.py, hard_negatives.py import từ đây
 SPLITS = ("train", "validation", "test")
+CFG = yaml.safe_load(open(ROOT / "configs/split.yaml", encoding="utf-8"))
+RATIOS = tuple(CFG["ratios"][s] for s in SPLITS)
 
 
-def read_questions(path=ROOT / "data/labels/questions.csv"):
-    with open(path, encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+def load_groups(path: Path) -> dict[str, dict]:
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        rows = sorted(csv.DictReader(f), key=lambda r: r["question_id"])
+    groups: dict[str, dict] = {}
+    for r in rows:
+        g = groups.setdefault(r["question_group_id"].strip(), {"type": r["type"].strip(), "n": 0})
+        g["n"] += 1  # type lấy từ câu đầu tiên = câu gốc
+    return groups
 
 
-def group_types(questions):
-    """question_group_id → type chiếm đa số trong nhóm (hòa thì lấy type của câu đầu)."""
-    by_group = defaultdict(list)
-    for q in questions:
-        by_group[q["question_group_id"]].append(q["type"])
-    return {g: Counter(ts).most_common(1)[0][0] for g, ts in by_group.items()}
+def alloc(n: int) -> list[int]:
+    raw = [n * r for r in RATIOS]
+    base = [int(x) for x in raw]
+    for i in sorted(range(3), key=lambda i: -(raw[i] - base[i]))[: n - sum(base)]:
+        base[i] += 1
+    if n >= 3:  # validation và test mỗi loại có ít nhất 1 nhóm
+        for i in (1, 2):
+            if base[i] == 0:
+                base[i], base[0] = 1, base[0] - 1
+    return base
 
 
-def allocate(n, ratios):
-    """Chia n nhóm theo tỉ lệ bằng phương pháp phần dư lớn nhất: 6 nhóm, 40/20/40 → 3/1/2 hoặc 2/1/3."""
-    raw = {s: n * ratios[s] for s in SPLITS}
-    out = {s: math.floor(v) for s, v in raw.items()}
-    for s in sorted(SPLITS, key=lambda s: raw[s] - out[s], reverse=True)[: n - sum(out.values())]:
-        out[s] += 1
-    return out
-
-
-def split_groups(gtype, ratios, seed):
+def split_groups(groups: dict[str, dict], seed: int) -> dict[str, int]:
     rng = random.Random(seed)
     by_type = defaultdict(list)
-    for g, t in sorted(gtype.items()):           # sort trước để kết quả không phụ thuộc thứ tự file
-        by_type[t].append(g)
-    result = {s: [] for s in SPLITS}
+    for gid in sorted(groups):
+        by_type[groups[gid]["type"]].append(gid)
+    assign: dict[str, int] = {}
     for t in sorted(by_type):
-        groups = by_type[t]
-        rng.shuffle(groups)
-        k = allocate(len(groups), ratios)
-        i = 0
-        for s in SPLITS:
-            result[s] += groups[i:i + k[s]]
-            i += k[s]
-    return {s: sorted(gs) for s, gs in result.items()}
+        ids = by_type[t][:]
+        rng.shuffle(ids)
+        a, start = alloc(len(ids)), 0
+        for s, k in enumerate(a):
+            for gid in ids[start:start + k]:
+                assign[gid] = s
+            start += k
+    total = sum(g["n"] for g in groups.values())
+    t_split = [round(total * RATIOS[0]), round(total * RATIOS[1])]
+    t_split.append(total - sum(t_split))
+    size = [0, 0, 0]
+    for gid, s in assign.items():
+        size[s] += groups[gid]["n"]
+    cost = lambda sz: sum(abs(sz[i] - t_split[i]) for i in range(3))
+    improved = True
+    while improved:  # hoán đổi nhóm cùng loại giữa hai tập để sát chỉ tiêu số câu
+        improved = False
+        for t in sorted(by_type):
+            ids = by_type[t]
+            for i, g1 in enumerate(ids):
+                for g2 in ids[i + 1:]:
+                    s1, s2 = assign[g1], assign[g2]
+                    if s1 == s2:
+                        continue
+                    d = groups[g2]["n"] - groups[g1]["n"]
+                    new = size[:]
+                    new[s1] += d
+                    new[s2] -= d
+                    if cost(new) < cost(size):
+                        assign[g1], assign[g2], size = s2, s1, new
+                        improved = True
+    return assign
 
 
-def main():
-    cfg = yaml.safe_load(open(ROOT / "configs/split.yaml", encoding="utf-8"))
-    questions = read_questions()
-    gtype = group_types(questions)
-    result = split_groups(gtype, cfg["ratios"], cfg["random_seed"])
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--questions", type=Path, default=ROOT / "data/labels/questions.csv")
+    ap.add_argument("--out", type=Path, default=ROOT / "data/splits")
+    ap.add_argument("--seed", type=int, default=CFG["random_seed"])
+    a = ap.parse_args()
 
-    out = ROOT / "data/splits"
-    out.mkdir(parents=True, exist_ok=True)
-    for s, gs in result.items():
-        with open(out / f"{s}_qgroups.csv", "w", encoding="utf-8", newline="") as f:
-            f.write("question_group_id\n" + "".join(g + "\n" for g in gs))
+    groups = load_groups(a.questions)
+    assign = split_groups(groups, a.seed)
+    a.out.mkdir(parents=True, exist_ok=True)
+    for s, name in enumerate(SPLITS):
+        with open(a.out / f"{name}_qgroups.csv", "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f, lineterminator="\n")
+            w.writerow(["question_group_id", "group_type", "n_questions"])
+            for gid in sorted(g for g, v in assign.items() if v == s):
+                w.writerow([gid, groups[gid]["type"], groups[gid]["n"]])
 
-    # tóm tắt: số nhóm, số câu, số câu theo type của từng tập
-    q_split = {g: s for s, gs in result.items() for g in gs}
-    print(f"{'type':16}" + "".join(f"{s:>12}" for s in SPLITS))
-    for t in sorted({q["type"] for q in questions}):
-        cnt = Counter(q_split[q["question_group_id"]] for q in questions if q["type"] == t)
-        print(f"{t:16}" + "".join(f"{cnt[s]:>12}" for s in SPLITS))
-    cnt = Counter(q_split[q["question_group_id"]] for q in questions)
-    print(f"{'TỔNG câu':16}" + "".join(f"{cnt[s]:>12}" for s in SPLITS))
-    print(f"{'TỔNG nhóm':16}" + "".join(f"{len(result[s]):>12}" for s in SPLITS))
+    types = sorted({g["type"] for g in groups.values()})
+    print(f"{len(groups)} nhóm, {sum(g['n'] for g in groups.values())} câu, seed {a.seed}\n")
+    print(f"{'type':<16}" + "".join(f"{n:>22}" for n in SPLITS))
+    print(f"{'':<16}" + "".join(f"{'nhóm/câu':>22}" for _ in SPLITS))
+    for t in types:
+        cells = []
+        for s in range(3):
+            gs = [g for g, v in assign.items() if v == s and groups[g]["type"] == t]
+            cells.append(f"{len(gs)}/{sum(groups[g]['n'] for g in gs)}")
+        print(f"{t:<16}" + "".join(f"{c:>22}" for c in cells))
+    tot = [(sum(1 for v in assign.values() if v == s),
+            sum(groups[g]["n"] for g, v in assign.items() if v == s)) for s in range(3)]
+    print(f"{'TỔNG':<16}" + "".join(f"{f'{g}/{q}':>22}" for g, q in tot))
+    for t in types:
+        for s in (1, 2):
+            if not any(v == s and groups[g]["type"] == t for g, v in assign.items()):
+                print(f"CẢNH BÁO: loại {t} không có nhóm nào trong {SPLITS[s]}")
 
 
 if __name__ == "__main__":
