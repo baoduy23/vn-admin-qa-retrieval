@@ -1,0 +1,31 @@
+# SINH TỰ ĐỘNG bởi python -m src.retrieval.evaluate_models (chọn trên validation), không sửa tay.
+# 2026-10-16T01:20:41. retrieve() và similar_questions() đọc file này.
+# NDCG@10 validation: {'bm25': 0.3499, 'dense': 0.4497, 'hybrid': 0.5251, 'rerank': 0.5444}
+bm25:
+  k1: 1.5
+  b: 0.9
+dense:
+  name: bkai-foundation-models/vietnamese-bi-encoder
+  segment: true
+  max_seq_length: 256
+hybrid:
+  fusion: minmax
+  alpha: 0.8
+  rrf_k: 60
+first_stage: hybrid
+rerank:
+  name: itdainb/PhoRanker
+  segment: true
+  max_seq_length: 256
+  top_n: 20
+  blend: 0.4
+pipeline: rerank
+thresholds:
+  bm25: 6.940212
+  dense: 0.21947
+  hybrid: 0.853039
+  rerank: 0.709427
+similar:
+  dense: true
+  min_score: 0.7  # sửa tay 15/10/2026 trước khi chạy test: app ưu tiên gợi ý đúng (val: đúng 0.71, không hiện cho câu ngoài phạm vi)
+  k: 3
