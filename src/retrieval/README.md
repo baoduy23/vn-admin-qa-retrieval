@@ -26,7 +26,35 @@ bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 | Việc | Người | Ghi chú |
 |---|---|---|
 | Script đánh giá chung (gọi `metrics.evaluate`) | TV2 | Mọi mô hình chạy qua cùng 1 script; `evaluate.py` của baseline dùng tạm được, TV2 thay hoặc mở rộng |
-| SBERT, hybrid, rerank cross-encoder / PhoBERT | TV3 | Cài thêm các dòng đang comment trong `requirements.txt` |
+
+## Mô hình cải tiến (TV3, M5)
+
+| File | Nội dung |
+|---|---|
+| `query.py` | Chuẩn hóa câu hỏi trước khi tokenize hoặc encode (issue #7): `clean_query` (NFC + `normalize_tone` + khoảng trắng), `strip_accents`, `has_diacritics`; `model_input` tách từ bằng đúng `segment()` đã tạo `text_seg` cho model PhoBERT |
+| `dense.py` | SBERT bi-encoder: `DenseIndex(model_cfg, chunks).search(q, k)`, cosine; embedding kho lưu ở `artifacts/embeddings/` |
+| `fusion.py` | Hybrid: `fuse([dense, bm25], [alpha, 1 - alpha], method="minmax" \| "rrf")`, Python thuần |
+| `rerank.py` | Cross-encoder xếp lại top-20: `Reranker(model_cfg, chunks_by_id).rerank(q, candidates, blend)` |
+| `retrieve.py` | **`retrieve(question, k=10)`** dùng chung: đọc `configs/retrieval_selected.yaml`; chưa có thì BM25 âm tiết. Câu gõ không dấu tìm BM25 trên bản bỏ dấu của kho |
+| `similar.py` | **`similar_questions(q, k=3)`**: câu hỏi tương tự trong train + validation (không lấy test), mỗi nhóm 1 câu, cosine bi-encoder (không có model thì Dice âm tiết) |
+| `evaluate_models.py` | Chọn model và tham số trên validation (bi-encoder, hybrid fusion × alpha, cross-encoder × blend, ngưỡng câu tương tự) → `configs/retrieval_selected.yaml`; `--test` chạy test 1 lần → `results/retrieval/models/` |
+| `finetune.py` | Nếu kịp: `--bi` fine-tune bi-encoder (MNRL + hard negative), `--cross` PhoBERT phân loại cặp, dữ liệu `train_pairs.csv` chỉ phần train → `artifacts/finetuned/` |
+
+Danh sách model ứng viên và lưới tham số ở `configs/retrieval.yaml`. Cài thêm: `pip install sentence-transformers torch`.
+
+```bash
+python -m src.retrieval.evaluate_models          # validation: chọn model, ghi configs/retrieval_selected.yaml
+python -m src.retrieval.evaluate_models --test   # chạy test MỘT lần với bộ đã chốt
+```
+
+```python
+from src.retrieval.retrieve import retrieve
+from src.retrieval.similar import similar_questions
+retrieve("dang ky khai sinh can giay to gi", k=5)   # [(chunk_id, score), ...]
+similar_questions("làm giấy khai sinh cho con cần gì", k=3)
+```
+
+TV4 ráp vào `answer()`: trong `configs/answer.yaml` đổi `function` thành `"src.retrieval.retrieve:retrieve"`.
 
 ## Quy ước chung cho mọi mô hình
 

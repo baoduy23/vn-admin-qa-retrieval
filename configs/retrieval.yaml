@@ -1,0 +1,88 @@
+# Mô hình truy hồi cải tiến (M5, TV3): src/retrieval/{dense,fusion,rerank,retrieve,similar,evaluate_models}.py
+# Danh sách ứng viên + lưới tham số. Bộ được chọn trên validation ghi ra configs/retrieval_selected.yaml
+# (do python -m src.retrieval.evaluate_models sinh, không sửa tay).
+
+bm25: {k1: 1.5, b: 0.9}      # BM25 âm tiết, tham số tốt nhất trên validation của TV1 (results/retrieval/baseline_results.csv)
+
+# retrieve() dùng khi chưa có configs/retrieval_selected.yaml
+fallback:
+  pipeline: bm25
+
+# segment: true = model học trên văn bản đã tách từ (PhoBERT) → chunk dùng text_seg, câu hỏi qua segment()
+# enabled: false = bỏ qua khi đánh giá (model nặng, hoặc tải không được)
+dense_models:
+  - name: bkai-foundation-models/vietnamese-bi-encoder      # PhoBERT-base-v2, ~135M tham số
+    segment: true
+    max_seq_length: 256
+    enabled: true
+  - name: keepitreal/vietnamese-sbert                       # PhoBERT-base, ~135M
+    segment: true
+    max_seq_length: 256
+    enabled: true
+  - name: intfloat/multilingual-e5-base                     # XLM-R base, ~278M, không cần tách từ
+    segment: false
+    query_prefix: "query: "
+    passage_prefix: "passage: "
+    max_seq_length: 512
+    enabled: true
+  - name: BAAI/bge-m3                                       # ~568M, ~2.3 GB: chậm trên CPU, bật nếu máy khỏe
+    segment: false
+    max_seq_length: 512
+    enabled: false
+  # Sau khi chạy python -m src.retrieval.finetune --bi:
+  # - name: artifacts/finetuned/bi-encoder
+  #   segment: true
+  #   max_seq_length: 256
+  #   enabled: true
+
+hybrid:
+  fusion: [minmax, rrf]
+  alpha_grid: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]   # trọng số của SBERT, BM25 nhận 1 - alpha
+  rrf_k: 60
+
+rerank:
+  top_n: 20                  # xếp lại top-20 của bước đầu (đề bài)
+  blend_grid: [0.0, 0.2, 0.4]
+  models:
+    - name: itdainb/PhoRanker                               # cross-encoder tiếng Việt, PhoBERT-base, đầu vào tách từ
+      segment: true
+      max_seq_length: 256
+      enabled: true
+    - name: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1      # đa ngôn ngữ, nhỏ (~118M)
+      segment: false
+      max_seq_length: 512
+      enabled: true
+    - name: BAAI/bge-reranker-v2-m3                         # ~568M: chậm trên CPU
+      segment: false
+      max_seq_length: 512
+      enabled: false
+    # Sau khi chạy python -m src.retrieval.finetune --cross (PhoBERT phân loại cặp bằng train_pairs.csv):
+    # - name: artifacts/finetuned/cross-encoder
+    #   segment: true
+    #   max_seq_length: 256
+    #   enabled: true
+
+similar_questions:
+  k: 3
+  min_score_grid: [0.5, 0.6, 0.7, 0.8, 0.9]   # cosine, chọn trên validation
+  min_score_dense: 0.7       # dùng khi chưa chọn
+  min_score_lexical: 0.3     # Dice âm tiết, khi không có bi-encoder
+
+finetune:
+  seed: 42
+  epochs: 3
+  batch_size: 8
+  lr: 2.0e-5
+  warmup_ratio: 0.1
+  bi_base: bkai-foundation-models/vietnamese-bi-encoder
+  cross_base: vinai/phobert-base-v2       # PhoBERT phân loại cặp; hoặc itdainb/PhoRanker để fine-tune tiếp
+
+eval:
+  ks: [1, 3, 5, 10, 20]
+  select_by: ndcg@10         # chọn model / tham số theo NDCG@10, hòa thì MRR
+  max_wrong_refusal: 0.1     # giống configs/retrieval_baseline.yaml
+
+runtime:
+  batch_size: 16
+  device: auto               # auto = cuda nếu có, không thì cpu
+  seed: 42
