@@ -21,9 +21,9 @@ Chi tiết từng việc nằm trong [file phân công trên Google Docs](https:
 |---|---|---|---|---|
 | TV1 | Duy | Dữ liệu + baseline | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản/Điểm, hợp nhất văn bản sửa đổi, làm sạch, chia đoạn có tiền tố "tên văn bản \| Điều", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 (hard negative) |
 | TV2 | Khang | Bộ test + đánh giá | Guideline gán nhãn (7 loại câu, relevance 2/1); chia người viết và người gán nhãn; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi; 1 script đánh giá chung (Recall@k, MRR, NDCG, tỷ lệ từ chối); chỉ số câu trả lời (F1, đúng nguồn, faithfulness); trưởng phần phân tích lỗi | Cả nhóm (script đánh giá, split) |
-| TV3 | | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
-| TV4 | | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
-| TV5 | | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
+| TV3 | Tín | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
+| TV4 | Quân | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
+| TV5 | Huy | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
 
 Cả nhóm: mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác, không tự gán nhãn câu mình viết. Ai làm phần nào viết phần đó trong báo cáo. Lộ trình: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
 
@@ -46,11 +46,13 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 ```
 data/raw/          văn bản gốc (.doc, .pdf, .html), bất biến; source_list.csv, amendments.yaml
 data/interim/      bản .docx để code đọc
-data/processed/    chunks.jsonl (text, text_seg, display_text)
+data/processed/    chunks.jsonl (433 chunk; text, text_seg, display_text), train_pairs.csv (hard negative)
 data/labels/       questions.csv, qrels.csv, annotation_guideline.md
 data/splits/       question_group_id của train / validation / test
+data/dataset_manifest.json   số liệu + sha256 của Dataset v1 (freeze)
 configs/           cấu hình tiền xử lý, chunking, baseline, split
 src/data/          làm sạch, tách luật, chunking, split
+src/labels/        gán nhãn chéo, Cohen's kappa
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
 src/app/           giao diện hỏi đáp
 notebooks/         thử nghiệm trước khi chuyển thành script (01_doc_luat.ipynb)
@@ -60,7 +62,7 @@ artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
 
-Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
+Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
 
 ## Chạy thử
 
@@ -89,6 +91,8 @@ python -m src.data.parse_law          # interim/*.docx → processed/units.jsonl
 python -m src.data.apply_amendments   # + raw/amendments.yaml → processed/units_current.jsonl, amendments_log.csv
 python -m src.data.chunk              # → processed/chunks.jsonl (433 chunk)
 python -m src.data.corpus_report      # → results/data_quality/corpus_report.md
+python -m src.labels.sample_double   # phân người gán nhãn chéo + 20% gán đôi → labels/label_assignments.csv
+python -m src.labels.kappa --a A.csv --b B.csv --out results/data_quality/label_agreement
 python -m src.data.split              # labels/questions.csv → splits/*_qgroups.csv
 python -m src.data.freeze             # kiểm tiêu chí freeze → data/dataset_manifest.json
 python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation (thêm --test để chạy test 1 lần)
