@@ -6,6 +6,7 @@ underthesea>=6.8
 matplotlib>=3.8
 pytest>=8.0
 openpyxl>=3.1          # kappa.py đọc phiếu gán nhãn .xlsx
+streamlit>=1.50        # web hỏi đáp src/app (Quân)
 # Mô hình cải tiến (cài khi tới M3):
 # sentence-transformers>=3.0
 # transformers>=4.40

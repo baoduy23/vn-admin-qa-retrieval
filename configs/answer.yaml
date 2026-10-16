@@ -1,0 +1,27 @@
+# Cấu hình hàm answer() và web (Quân, M6): src/answer/, src/app/
+# Ngưỡng từ chối τ KHÔNG ghi ở đây: do python -m src.answer.evaluate_answer chọn trên validation
+# và ghi ra configs/answer_selected.yaml (sinh tự động, không sửa tay).
+
+retriever:
+  # selected: pipeline TV3 đã chốt trong configs/retrieval_selected.yaml (rerank PhoRanker trên hybrid),
+  #           cần sentence-transformers + torch và tải được model từ Hugging Face
+  # bm25:     BM25 âm tiết, Python thuần, chạy được trên máy yếu hoặc Streamlit Cloud gói miễn phí
+  # Biến môi trường ANSWER_PIPELINE=bm25 ghi đè mục này. Nạp "selected" lỗi thì tự lùi về bm25.
+  mode: selected
+  function: "src.retrieval.retrieve:retrieve"
+
+top_k: 5              # số nguồn hiển thị trên web
+evidence_k: 3         # số đoạn đầu dùng để kiểm tra "có con số đúng loại câu hỏi đòi không"
+evidence_check: true  # tắt để so sánh: chỉ dùng ngưỡng τ
+
+multi_intent:
+  split: true         # tách câu nhiều ý theo liên từ ("và", "còn", dấu phẩy), trả lời từng ý
+
+underspecified:
+  max_content_syllables: 5   # câu không nhắc việc hộ tịch nào và ≤ 5 âm tiết nội dung → gợi ý hỏi rõ
+
+similar:
+  k: 3                # min_score lấy theo configs/retrieval_selected.yaml (TV3 chọn trên validation)
+
+refusal:
+  max_wrong_refusal: 0.1     # khi chọn τ: từ chối nhầm câu hợp lệ không quá 10%, giống TV1/TV3
