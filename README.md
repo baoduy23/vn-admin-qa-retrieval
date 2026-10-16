@@ -54,7 +54,8 @@ configs/           cấu hình tiền xử lý, chunking, baseline, split
 src/data/          làm sạch, tách luật, chunking, split
 src/labels/        gán nhãn chéo, Cohen's kappa
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
-src/app/           giao diện hỏi đáp
+src/answer/        answer(): trích nguyên văn kèm nguồn, ngưỡng từ chối, câu nhiều ý (Quân)
+src/app/           web Streamlit + SQLite lịch sử, đánh giá (Quân)
 notebooks/         thử nghiệm trước khi chuyển thành script (01_doc_luat.ipynb)
 tests/             pytest
 results/           báo cáo chất lượng, bảng kết quả
@@ -62,7 +63,7 @@ artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
 
-Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
+Thư mục nào cũng có README riêng ghi rõ file nào làm gì và chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/answer](src/answer/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
 
 ## Chạy thử
 
@@ -99,6 +100,17 @@ python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation (thêm --t
 python -m src.retrieval.hard_negatives  # → processed/train_pairs.csv
 python -m pytest
 ```
+
+## Trả lời và web (Quân)
+
+```bash
+python -m src.app.images               # (tuỳ chọn) tải 3 ảnh giao diện mặc định về src/app/static/img/
+python -m src.answer.evaluate_answer   # chọn ngưỡng từ chối τ trên validation → configs/answer_selected.yaml, results/answer/
+streamlit run src/app/main.py          # web hỏi đáp; máy chưa cài torch: đặt ANSWER_PIPELINE=bm25 trước lệnh
+python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu để trang Thống kê có số liệu khi demo
+```
+
+`answer()` trả lời theo mẫu `Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>"`, từ chối khi điểm top-1 dưới τ hoặc khi câu hỏi đòi con số (tiền, phạt, tuổi, thời hạn) mà văn bản tìm được không có; câu nhiều ý được tách và trả lời từng ý. Web có đủ 7 chức năng đề bài. Chi tiết và cách deploy: [src/answer](src/answer/README.md), [src/app](src/app/README.md); phần báo cáo của Quân: [docs/bao-cao-quan.md](docs/bao-cao-quan.md).
 
 ## Tài liệu
 

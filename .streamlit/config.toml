@@ -1,0 +1,16 @@
+# Giao diện web (Quân): tông đất nung / vàng nghệ / kem. Màu chi tiết ở src/app/style.py
+[theme]
+base = "light"
+primaryColor = "#C9653F"
+backgroundColor = "#FFFDF8"
+secondaryBackgroundColor = "#F3F2F0"
+textColor = "#3B2A22"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+enableStaticServing = true   # phục vụ ảnh trong src/app/static/ qua đường dẫn app/static/...

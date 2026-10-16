@@ -1,0 +1,9 @@
+# Dùng khi deploy lên Streamlit Community Cloud (Cloud đọc file requirements cạnh main.py trước).
+# Chạy ở máy cá nhân thì dùng requirements.txt ở gốc repo + pip install sentence-transformers torch.
+--extra-index-url https://download.pytorch.org/whl/cpu
+streamlit>=1.50
+pandas>=2.0
+pyyaml>=6.0
+underthesea>=6.8
+torch
+sentence-transformers>=3.0
