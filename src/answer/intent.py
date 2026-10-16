@@ -99,7 +99,7 @@ ANSWER_TYPES = [
      re.compile(r"\d+\s*tuổi")),
     ("thoi_han",
      Pattern(r"\b(bao lâu|mấy ngày|bao nhiêu ngày|thời hạn|hạn bao nhiêu|trong vòng)\b"),
-     re.compile(r"\d+\s*(ngày|tháng|năm|giờ)\b|ngay trong ngày|ngày làm việc|thời hạn")),
+     re.compile(r"\d+\s*(ngày|tháng|năm|giờ)\b|ngay trong ngày")),
 ]
 
 TYPE_LABEL = {"muc_phat": "mức xử phạt", "so_tien": "số tiền / lệ phí",

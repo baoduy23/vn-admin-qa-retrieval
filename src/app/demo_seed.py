@@ -17,18 +17,14 @@ from src.app import db
 
 
 def main(n: int | None = None, seed: int = 42) -> None:
-    rng = random.Random(seed)
     qs = load_questions({"train", "validation"})
-    rng.shuffle(qs)
+    random.Random(seed).shuffle(qs)
     engine = get_engine()
     for q in qs[:n] if n else qs:
-        r = engine.answer(q["question"])
-        qid = db.log_query(r)
-        if not r["refused"] and rng.random() < 0.5:
-            db.save_feedback(qid, 1 if rng.random() < 0.8 else -1)
+        db.log_query(engine.answer(q["question"]))
     print(db.summary(), "→", db.DB_PATH)
-
-
+    
+    
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=None)
