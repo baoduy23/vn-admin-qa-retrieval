@@ -39,7 +39,7 @@ Theo dõi ở tab **Issues** và **Milestones**. Mỗi milestone gắn với m�
 | M4 Đánh giá chung | TV2 Khang | Script đánh giá dùng chung: Recall@k, MRR, NDCG, tỷ lệ từ chối; chỉ số câu trả lời: F1, đúng nguồn, faithfulness | Làm song song, cần xong trước khi chạy mô hình |
 | M5 Mô hình truy hồi | TV3 Tín | SBERT, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative; `retrieve()`; câu hỏi tương tự | M3 |
 | M6 Trả lời + web | TV4 Quân | Template trích nguyên văn kèm nguồn; ngưỡng từ chối trên dev; câu nhiều ý, câu dễ bịa; `answer()`; Streamlit + SQLite; deploy | Khung web làm trước trên dữ liệu giả; ráp thật cần M5 |
-| M7 Phân tích + báo cáo | TV2 (phân tích lỗi) Duy, TV5 (slide, báo cáo) Huy | 6 phân tích bắt buộc; báo cáo, slide, demo | M5, M6 |
+| M7 Phân tích + báo cáo | TV2 (phân tích lỗi) Khang, TV5 (slide, báo cáo) Huy | 6 phân tích bắt buộc; báo cáo, slide, demo | M5, M6 |
 
 ## Cấu trúc thư mục
 
