@@ -15,3 +15,6 @@ G060,unsupported,2
 G102,direct,3
 G108,paraphrase,3
 G116,confusable,3
+G123,direct,3
+G126,paraphrase,3
+G140,confusable,3
