@@ -43,6 +43,9 @@ hybrid:
 rerank:
   top_n: 20                  # xếp lại top-20 của bước đầu (đề bài)
   blend_grid: [0.0, 0.2, 0.4]
+  # Gộp thêm ứng viên: chunk trong top-N của BM25 mà bước đầu bỏ sót cũng được cross-encoder chấm
+  # (0 = như cũ). Nhắm vào câu gõ không dấu: SBERT trượt, BM25 bỏ dấu bắt được nhưng hybrid đẩy văng.
+  extra_bm25_grid: [0, 5, 10]
   models:
     - name: itdainb/PhoRanker                               # cross-encoder tiếng Việt, PhoBERT-base, đầu vào tách từ
       segment: true

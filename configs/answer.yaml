@@ -14,6 +14,17 @@ top_k: 5              # số nguồn hiển thị trên web
 evidence_k: 3         # số đoạn đầu dùng để kiểm tra "có con số đúng loại câu hỏi đòi không"
 evidence_check: true  # tắt để so sánh: chỉ dùng ngưỡng τ
 
+# Từ chối ngay câu về lĩnh vực khác (hộ chiếu, căn cước, đất đai, thuế, bằng lái, quốc tịch...) mà không nhắc
+# việc hộ tịch nào, trước cả bước truy hồi (src/answer/intent.py, out_of_scope_topic). false = chỉ dùng τ như cũ.
+out_of_scope_filter: true
+
+quote:
+  # cách chọn khoản / điểm để trích trong đoạn top-1:
+  # idf:    tổng IDF âm tiết trùng câu hỏi (bản đầu, không cần model)
+  # rerank: PhoRanker của TV3 chấm từng dòng (cần torch; không nạp được thì tự dùng idf)
+  # So sánh 2 cách: python -m src.answer.compare_quote
+  scorer: idf
+
 multi_intent:
   split: true         # tách câu nhiều ý theo liên từ ("và", "còn", dấu phẩy), trả lời từng ý
 

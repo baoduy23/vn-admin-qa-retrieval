@@ -7,6 +7,8 @@
     r["refused"]     # True khi không đủ căn cứ
 
 Các bước:
+  0. Câu hỏi về lĩnh vực khác (hộ chiếu, đất đai, thuế...) mà không nhắc việc hộ tịch nào → từ chối ngay
+     (out_of_scope, intent.out_of_scope_topic), không truy hồi.
   1. Tách câu nhiều ý (intent.split_multi_intent), mỗi ý truy hồi riêng bằng retrieve() của TV3.
   2. Mỗi ý: điểm top-1 < τ → từ chối (low_score). τ chọn trên validation (evaluate_answer.py).
   3. Câu hỏi đòi con số (tiền, phạt, tuổi, thời hạn) mà top evidence_k đoạn không có con số đó
@@ -23,7 +25,8 @@ from functools import lru_cache
 import yaml
 
 from src.answer.intent import (TYPE_LABEL, chunk_topic, evidence_pattern, expected_type, find_procedures, has_evidence,
-                               is_underspecified, split_multi_intent)
+                               is_underspecified, out_of_scope_topic, split_multi_intent)
+from src.answer.line_scorer import load_line_scorer
 from src.answer.retriever import Retriever, load_answer_config, load_retriever
 from src.answer.template import best_quote, citation, format_answer, highlight_html
 from src.answer.text import IDF, content_syllables
@@ -36,6 +39,8 @@ AUTHORITY_NOTE_CHUNK = "120.2025.ND-CP__PL1__K2"      # cấp huyện → cấp 
 
 REFUSAL_TEXT = {
     "empty": "Bạn chưa nhập câu hỏi.",
+    "out_of_scope": ("Câu hỏi về {topic} nằm ngoài phạm vi kho văn bản hộ tịch (khai sinh, kết hôn, khai tử, "
+                     "thay đổi, cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục), nên hệ thống không trả lời."),
     "low_score": ("Hệ thống không tìm thấy quy định đủ liên quan trong kho văn bản hộ tịch để trả lời "
                   "câu hỏi này. Câu hỏi có thể nằm ngoài phạm vi kho (khai sinh, kết hôn, khai tử, "
                   "thay đổi, cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục)."),
@@ -65,8 +70,10 @@ def load_evidence_check(pipeline: str, default: bool) -> bool:
 
 class AnswerEngine:
     def __init__(self, cfg: dict | None = None, retriever: Retriever | None = None,
-                 chunks: list[dict] | None = None, similar=None, threshold: float | None = None):
-        """Tham số retriever / similar / threshold dùng khi đánh giá hoặc test (truyền hàm giả)."""
+                 chunks: list[dict] | None = None, similar=None, threshold: float | None = None,
+                 line_scorer=None):
+        """Tham số retriever / similar / threshold / line_scorer dùng khi đánh giá hoặc test (truyền hàm giả).
+        Truyền retriever mà không truyền line_scorer thì chọn dòng bằng IDF (evaluate_answer không cần model)."""
         self.cfg = cfg or load_answer_config()
         self.chunks = chunks if chunks is not None else load_chunks()
         self.by_id = {c["chunk_id"]: c for c in self.chunks}
@@ -76,6 +83,9 @@ class AnswerEngine:
         self.idf = IDF([l for c in self.chunks for l in c.get("display_text", "").split("\n")])
         self._similar = similar
         self.warning = self.retriever.warning
+        if line_scorer is None and retriever is None and not self.warning:
+            line_scorer = load_line_scorer(self.cfg)
+        self.line_scorer = line_scorer
 
     # ------------------------------------------------------------ câu hỏi tương tự
     def similar(self, question: str) -> list[dict]:
@@ -115,7 +125,7 @@ class AnswerEngine:
             part.update(refused=True, reason="no_evidence")
             return part
         chunk = self.by_id[hits[0][0]]
-        quote = best_quote(question, chunk, self.idf, evidence_pattern(part["expected_type"]))
+        quote = best_quote(question, chunk, self.idf, evidence_pattern(part["expected_type"]), self.line_scorer)
         part.update(chunk_id=chunk["chunk_id"], quote_lines=quote, answer=format_answer(chunk, quote))
         return part
 
@@ -132,6 +142,13 @@ class AnswerEngine:
         if not q:
             return dict(base, refused=True, reason="empty", answer=REFUSAL_TEXT["empty"], parts=[],
                         sources=[], similar_questions=[], underspecified=False, notes=[], scores={})
+
+        topic = out_of_scope_topic(q) if self.cfg.get("out_of_scope_filter", True) else None
+        if topic:
+            return dict(base, refused=True, reason="out_of_scope",
+                        answer=f'{REFUSAL_TEXT["out_of_scope"].format(topic=topic)}\n{REFUSAL_HINT}',
+                        parts=[], sources=[], similar_questions=[], underspecified=False, notes=[],
+                        scores={"top1": 0.0, "threshold": self.threshold}, out_of_scope_topic=topic)
 
         split = self.cfg.get("multi_intent", {}).get("split", True)
         sub_questions = split_multi_intent(q) if split else [q]

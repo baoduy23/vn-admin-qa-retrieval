@@ -5,7 +5,7 @@ Quy trình (khóa test, giống src/retrieval/evaluate.py):
      a. dense: thử từng bi-encoder trong configs/retrieval.yaml, giữ model NDCG@10 cao nhất (hòa: MRR)
      b. hybrid: BM25 + bi-encoder tốt nhất, lưới fusion (minmax / rrf) × alpha
      c. rerank: bước đầu = bước có Recall@20 cao nhất trong bm25 / dense / hybrid; thử từng
-        cross-encoder × blend trên top_n = 20
+        cross-encoder × extra_bm25 × blend trên top_n = 20 (+ tối đa extra_bm25 chunk của BM25)
      d. pipeline cuối = bước NDCG@10 cao nhất; ngưỡng từ chối (điểm top-1) của mỗi bước chọn như TV1
      e. câu hỏi tương tự: chọn min_score trên validation (bỏ nhóm của chính câu hỏi)
      → ghi configs/retrieval_selected.yaml (retrieve() và similar_questions() đọc file này)
@@ -38,7 +38,7 @@ from src.retrieval.evaluate import NO_QRELS, load_data, pick_threshold, refusal_
 from src.retrieval.fusion import fuse, top_k
 from src.retrieval.metrics import evaluate
 from src.retrieval.query import clean_query
-from src.retrieval.retrieve import SELECTED, STAGES, SparseIndex, load_config
+from src.retrieval.retrieve import SELECTED, STAGES, SparseIndex, load_config, rerank_candidates
 
 OUT = ROOT / "results/retrieval/models"
 TOPN = 20
@@ -82,14 +82,23 @@ class ScoreCache:
 
 
 def rerank_run(reranker, first_run, questions, blend, ce_cache):
+    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, chấm mỗi cặp một lần cho cả lưới."""
     out = {}
     for q in questions:
         cands = first_run[q["question_id"]]
-        if q["question_id"] not in ce_cache:
-            ce_cache[q["question_id"]] = reranker.scores(q["question"], [c for c, _ in cands])
+        done = ce_cache.setdefault(q["question_id"], {})
+        todo = [c for c, _ in cands if c not in done]
+        if todo:
+            done.update(zip(todo, reranker.scores(q["question"], todo)))
         out[q["question_id"]] = reranker.rerank(q["question"], cands, blend=blend,
-                                                ce_scores=ce_cache[q["question_id"]])
+                                                ce_scores=[done[c] for c, _ in cands])
     return out
+
+
+def candidate_runs(first_scores, bm25_scores, ids, questions, top_n, extra):
+    """Ứng viên rerank của từng câu: top_n bước đầu + chunk BM25 bị bỏ sót (xem rerank_candidates)."""
+    return {q["question_id"]: rerank_candidates(ids, first_scores(q), bm25_scores(q) if extra else [], top_n, extra)
+            for q in questions}
 
 
 def grid_row(stage, model, params, m, ks, error=""):
@@ -162,7 +171,12 @@ def select(cfg, chunks, val, qrels):
     from src.retrieval.rerank import Reranker
     chunks_by_id = {c["chunk_id"]: c for c in chunks}
     top_n = cfg["rerank"]["top_n"]
-    first_run = {q: res[:top_n] for q, res in runs[first].items()}
+    h = spec["hybrid"]
+    first_scores = {"bm25": sparse, "dense": dense_scores,
+                    "hybrid": lambda q: fuse([dense_scores(q), sparse(q)], [h["alpha"], 1 - h["alpha"]],
+                                             h["fusion"], h["rrf_k"])}[first]
+    extras = [0] if first == "bm25" else cfg["rerank"].get("extra_bm25_grid", [0])
+    pools = {e: candidate_runs(first_scores, sparse, ids, val, top_n, e) for e in extras}
     rb = None
     for m in cfg["rerank"]["models"]:
         if not m.get("enabled", True):
@@ -174,14 +188,17 @@ def select(cfg, chunks, val, qrels):
             grid.append(grid_row("rerank", m["name"], {}, {}, ks, error=short_error(e)))
             continue
         ce_cache = {}
-        for blend in cfg["rerank"]["blend_grid"]:
-            r = rerank_run(rr, first_run, val, blend, ce_cache)
-            mt = metrics(r, val, qrels, ks)
-            params = dict(first_stage=first, top_n=top_n, blend=blend)
-            grid.append(grid_row("rerank", m["name"], params, mt, ks))
-            print(f"rerank {m['name']} blend {blend}: NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f}")
-            if rb is None or key(mt, sel) > rb[0]:
-                rb, runs["rerank"] = (key(mt, sel), dict(model_cfg(m), top_n=top_n, blend=blend)), r
+        for extra, pool in pools.items():
+            for blend in cfg["rerank"]["blend_grid"]:
+                r = rerank_run(rr, pool, val, blend, ce_cache)
+                mt = metrics(r, val, qrels, ks)
+                params = dict(first_stage=first, top_n=top_n, extra_bm25=extra, blend=blend)
+                grid.append(grid_row("rerank", m["name"], params, mt, ks))
+                print(f"rerank {m['name']} extra_bm25 {extra} blend {blend}: "
+                      f"NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f} R@20 {mt['recall@20']:.3f}")
+                if rb is None or key(mt, sel) > rb[0]:
+                    rb, runs["rerank"] = (key(mt, sel), dict(model_cfg(m), top_n=top_n, extra_bm25=extra,
+                                                             blend=blend)), r
     stages = ["bm25", "dense", "hybrid"]
     if rb is not None:
         best["rerank"], spec["rerank"] = rb
@@ -259,8 +276,9 @@ def run_split(spec, cfg, chunks, questions):
                          for q in questions}, **runs}
     if "rerank" in stages:
         r = spec["rerank"]
-        first = {q: res[:r["top_n"]] for q, res in runs[spec["first_stage"]].items()}
-        runs["rerank"] = rerank_run(full.reranker, first, questions, r.get("blend", 0.0), {})
+        extra = r.get("extra_bm25", 0) if spec["first_stage"] != "bm25" else 0
+        pool = candidate_runs(cache[spec["first_stage"]], cache["bm25"], ids, questions, r["top_n"], extra)
+        runs["rerank"] = rerank_run(full.reranker, pool, questions, r.get("blend", 0.0), {})
     return runs
 
 
@@ -275,7 +293,8 @@ def stage_name(spec, s):
         h = spec["hybrid"]
         return f"Hybrid BM25 + SBERT ({h['fusion']}, alpha {h['alpha']})"
     r = spec["rerank"]
-    return f"Rerank {r['name']} trên top-{r['top_n']} {spec['first_stage']} (blend {r['blend']})"
+    extra = f" + tối đa {r['extra_bm25']} chunk BM25" if r.get("extra_bm25") else ""
+    return f"Rerank {r['name']} trên top-{r['top_n']} {spec['first_stage']}{extra} (blend {r['blend']})"
 
 
 def by_type(run, questions, qrels, ks):

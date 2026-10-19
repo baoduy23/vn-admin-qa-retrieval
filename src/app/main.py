@@ -54,6 +54,21 @@ def get_engine() -> AnswerEngine:
     return AnswerEngine()
 
 
+def pipeline_desc(engine: AnswerEngine) -> dict:
+    """Mô tả đúng pipeline đang chạy cho thẻ "Cách hệ thống trả lời", chân trang, trang giới thiệu.
+    Trước đây ghi cứng "BM25 + SBERT + PhoRanker", kể cả khi web đã lùi về BM25 vì không nạp được model."""
+    name = engine.retriever.name
+    search = {"bm25": "BM25", "dense": "SBERT"}.get(name, "BM25 + SBERT")
+    rerank = ""
+    if name == "rerank":
+        from src.retrieval.retrieve import load_spec
+        r = load_spec().get("rerank", {})
+        model = r.get("name", "cross-encoder").split("/")[-1]
+        extra = f" (cộng tối đa {r['extra_bm25']} đoạn BM25 bỏ sót)" if r.get("extra_bm25") else ""
+        rerank = f"{r.get('top_n', 20)} đoạn đầu{extra} bằng cross-encoder {model}"
+    return dict(search=search, rerank=rerank, first="hybrid" if name in ("hybrid", "rerank") else name)
+
+
 @st.cache_data
 def topic_questions(per_topic: int = 5) -> dict[str, list[str]]:
     """Câu hỏi mẫu theo từng việc hộ tịch, lấy từ bộ câu đã gán nhãn train + validation (không lấy test),
@@ -101,13 +116,15 @@ def header() -> None:
 BIRDS = "<i></i>" * 12        # dải chim Lạc: thừa bao nhiêu con thì tự ẩn (xem .frieze trong style.py)
 
 
-def footer() -> None:
+def footer(engine: AnswerEngine) -> None:
+    d = pipeline_desc(engine)
+    how = f"truy hồi {d['search']}" + (", xếp hạng lại bằng cross-encoder" if d["rerank"] else "")
     st.markdown(f"""
 <div class="site-footer">
   <div class="frieze">{BIRDS}</div>
   <div class="cols">
-    <div><h4>Tra cứu Hộ tịch</h4>Sản phẩm học tập của nhóm, Đề tài 10 môn Xử lý ngôn ngữ tự nhiên: truy hồi
-      BM25 + SBERT, xếp hạng lại bằng cross-encoder, trả lời bằng trích dẫn nguyên văn.</div>
+    <div><h4>Tra cứu Hộ tịch</h4>Sản phẩm học tập của nhóm, Đề tài 10 môn Xử lý ngôn ngữ tự nhiên: {how},
+      trả lời bằng trích dẫn nguyên văn.</div>
     <div><h4>Liên kết hữu ích</h4>
       <a href="https://dichvucong.gov.vn" target="_blank">Cổng Dịch vụ công quốc gia</a><br>
       <a href="https://vbpl.vn" target="_blank">Cơ sở dữ liệu quốc gia về văn bản pháp luật</a><br>
@@ -192,11 +209,12 @@ def chunk_meta(engine, result, chunk_id) -> dict:
 
 def answer_card(engine, r: dict) -> None:
     if r["refused"]:
-        msgs = [AnswerEngine.refusal_text(p) for p in r["parts"]] or [r["answer"]]
+        msgs = [AnswerEngine.refusal_text(p) for p in r["parts"]] or [r["answer"].split("\n")[0]]
         body = "".join(f"<p>{html.escape(m)}</p>" for m in dict.fromkeys(msgs))
+        label = "Ngoài phạm vi hộ tịch" if r.get("reason") == "out_of_scope" else "Chưa đủ căn cứ để trả lời"
         st.markdown(f"""
 <div class="refuse-card">
-  <div class="label">⚖ Chưa đủ căn cứ để trả lời</div>
+  <div class="label">⚖ {label}</div>
   {body}
   <p>Bạn có thể hỏi lại cụ thể hơn, hoặc liên hệ <b>Ủy ban nhân dân cấp xã</b> nơi cư trú để được hướng dẫn chính thức.</p>
 </div>""", unsafe_allow_html=True)
@@ -317,7 +335,7 @@ def tech_box(r: dict) -> None:
         st.markdown("\n".join(f"- **{k}:** {v}" for k, v in rows))
 
 
-def home_empty() -> None:
+def home_empty(engine: AnswerEngine) -> None:
     """Trang đầu: chủ đề hữu ích (accordion kiểu Kho tri thức UEH) + thẻ "Cách hệ thống trả lời"."""
     left, right = st.columns([1.6, 1], gap="large")
     topics = topic_questions()
@@ -333,13 +351,15 @@ def home_empty() -> None:
                                   icon=":material/chevron_right:", width="stretch")
     with right:
         st.markdown('<div class="sec-title left">Cách hệ thống trả lời</div>', unsafe_allow_html=True)
-        st.markdown("""
-<div class="how-card"><div class="bd">
-  <b>1. Tìm</b> các điều, khoản liên quan trong 10 văn bản hộ tịch (BM25 + SBERT).<br>
-  <b>2. Xếp hạng lại</b> 20 đoạn đầu bằng cross-encoder PhoRanker.<br>
-  <b>3. Trích nguyên văn</b> khoản khớp nhất, ghi rõ văn bản, Điều, Khoản và đường dẫn văn bản gốc.<br>
-  <b>4. Từ chối</b> khi điểm thấp hơn ngưỡng, hoặc văn bản không có con số câu hỏi đòi, thay vì đoán.
-</div></div>""", unsafe_allow_html=True)
+        d = pipeline_desc(engine)
+        steps = [f"<b>Tìm</b> các điều, khoản liên quan trong 10 văn bản hộ tịch ({d['search']})."]
+        if d["rerank"]:
+            steps.append(f"<b>Xếp hạng lại</b> {d['rerank']}.")
+        steps += ["<b>Trích nguyên văn</b> khoản khớp nhất, ghi rõ văn bản, Điều, Khoản và đường dẫn văn bản gốc.",
+                  "<b>Từ chối</b> câu ngoài lĩnh vực hộ tịch, câu có điểm thấp hơn ngưỡng, hoặc khi văn bản "
+                  "không có con số câu hỏi đòi, thay vì đoán."]
+        body = "<br>".join(f"{i}. {t}" for i, t in enumerate(steps, 1))
+        st.markdown(f'<div class="how-card"><div class="bd">{body}</div></div>', unsafe_allow_html=True)
 
 
 def go_home() -> None:
@@ -360,7 +380,7 @@ def tab_home(engine: AnswerEngine) -> None:
             st.session_state.result = None
         st.rerun()                                  # vẽ lại ở dạng gọn (không banner) cùng kết quả mới
     if not r:
-        home_empty()
+        home_empty(engine)
         return
     st.write("")
     left, right = st.columns([2.2, 1], gap="large")
@@ -467,7 +487,8 @@ def tab_stats(engine: AnswerEngine) -> None:
         st.bar_chart(day, x="Ngày", y="Số lượt", color="#C9653F", height=260)
     with right:
         st.markdown("**Lý do từ chối**")
-        reasons = {"low_score": "Điểm thấp hơn ngưỡng τ (có thể ngoài phạm vi)",
+        reasons = {"out_of_scope": "Câu hỏi thuộc lĩnh vực khác (lọc trước truy hồi)",
+                   "low_score": "Điểm thấp hơn ngưỡng τ (có thể ngoài phạm vi)",
                    "no_evidence": "Văn bản không có con số câu hỏi đòi"}
         rr = df[df["refused"] == 1]["reason"].map(reasons).value_counts()
         if len(rr):
@@ -479,9 +500,12 @@ def tab_stats(engine: AnswerEngine) -> None:
 # ======================================================================= giới thiệu
 def tab_about(engine: AnswerEngine) -> None:
     st.markdown('<div class="sec-title">Giới thiệu hệ thống</div>', unsafe_allow_html=True)
+    d = pipeline_desc(engine)
     steps = [("Tiền xử lý", "làm sạch, chuẩn hóa dấu"), ("Chia đoạn", "1 Điều / Khoản = 1 đoạn"),
-             ("Lập chỉ mục", "BM25 + SBERT"), ("Truy hồi", "hybrid, top-20"),
-             ("Xếp hạng lại", "cross-encoder"), ("Trả lời", "trích nguyên văn hoặc từ chối")]
+             ("Lập chỉ mục", d["search"]), ("Truy hồi", d["first"] + (", top-20" if d["rerank"] else ""))]
+    if d["rerank"]:
+        steps.append(("Xếp hạng lại", "cross-encoder"))
+    steps.append(("Trả lời", "trích nguyên văn hoặc từ chối"))
     flow = '<span class="arrow">→</span>'.join(f'<span class="step">{a}<small>{b}</small></span>' for a, b in steps)
     st.markdown(f'<div class="pipeline">{flow}</div>', unsafe_allow_html=True)
     c1, c2 = st.columns([1, 1], gap="large")
@@ -523,7 +547,7 @@ def main() -> None:
         tab_stats(engine)
     with tabs[3]:
         tab_about(engine)
-    footer()
+    footer(engine)
 
 
 main()
