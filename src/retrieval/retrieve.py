@@ -72,6 +72,26 @@ def rerank_candidates(ids: list[str], first_scores: list[float], bm25_scores: li
     return cands
 
 
+def candidate_runs(first_scores, bm25_scores, ids, questions, top_n, extra):
+    """Ứng viên rerank của từng câu: top_n bước đầu + chunk BM25 bị bỏ sót (xem rerank_candidates)."""
+    return {q["question_id"]: rerank_candidates(ids, first_scores(q), bm25_scores(q) if extra else [], top_n, extra)
+            for q in questions}
+
+
+def rerank_run(reranker, first_run, questions, blend, ce_cache):
+    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, chấm mỗi cặp một lần cho cả lưới."""
+    out = {}
+    for q in questions:
+        cands = first_run[q["question_id"]]
+        done = ce_cache.setdefault(q["question_id"], {})
+        todo = [c for c, _ in cands if c not in done]
+        if todo:
+            done.update(zip(todo, reranker.scores(q["question"], todo)))
+        out[q["question_id"]] = reranker.rerank(q["question"], cands, blend=blend,
+                                                ce_scores=[done[c] for c, _ in cands])
+    return out
+
+
 class SparseIndex:
     """BM25 âm tiết. Hai chỉ mục: có dấu (mặc định) và bỏ dấu (cho câu gõ không dấu, tạo khi cần)."""
 

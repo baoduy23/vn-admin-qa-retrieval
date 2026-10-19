@@ -9,7 +9,7 @@ import pytest
 from src.data.split import ROOT
 from src.retrieval.fusion import fuse, minmax, ranks, top_k
 from src.retrieval.query import clean_query, has_diacritics, strip_accents
-from src.retrieval.retrieve import Pipeline, load_chunks, load_config, rerank_candidates
+from src.retrieval.retrieve import Pipeline, load_chunks, load_config, rerank_candidates, rerank_run
 from src.retrieval.similar import SimilarIndex, question_bank
 
 BM25_SPEC = {"pipeline": "bm25"}
@@ -96,12 +96,13 @@ def test_rerank_candidates_adds_bm25_misses():
 
 
 def test_rerank_run_scores_each_pair_once():
-    from src.retrieval.evaluate_models import rerank_run
-    from src.retrieval.rerank import Reranker
-
-    class Fake(Reranker):
+    class Fake:
+        """Giả Reranker (không import rerank.py vì nó cần numpy / torch): chỉ có scores + rerank."""
         def __init__(self):
             self.calls = []
+
+        def rerank(self, question, candidates, blend=0.0, ce_scores=None):
+            return sorted(zip([c for c, _ in candidates], ce_scores), key=lambda x: -x[1])
 
         def scores(self, question, chunk_ids):
             self.calls.append(list(chunk_ids))
