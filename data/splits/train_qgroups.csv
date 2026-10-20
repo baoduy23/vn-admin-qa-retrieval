@@ -33,3 +33,12 @@ G111,underspecified,3
 G112,multi_intent,3
 G117,out_of_scope,3
 G120,out_of_scope,3
+G122,direct,3
+G125,paraphrase,3
+G127,paraphrase,3
+G129,confusable,3
+G130,confusable,3
+G135,out_of_scope,3
+G136,unsupported,3
+G137,underspecified,3
+G138,multi_intent,3
