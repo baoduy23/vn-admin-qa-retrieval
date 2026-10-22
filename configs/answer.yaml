@@ -23,7 +23,7 @@ quote:
   # idf:    tổng IDF âm tiết trùng câu hỏi (bản đầu, không cần model)
   # rerank: PhoRanker của TV3 chấm từng dòng (cần torch; không nạp được thì tự dùng idf)
   # So sánh 2 cách: python -m src.answer.compare_quote
-  scorer: idf
+  scorer: rerank
 
 multi_intent:
   split: true         # tách câu nhiều ý theo liên từ ("và", "còn", dấu phẩy), trả lời từng ý

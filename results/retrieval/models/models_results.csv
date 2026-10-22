@@ -1,11 +1,6 @@
 stage,model,split,n_answerable,n_unanswerable,R@1,R@3,R@5,R@10,R@20,MRR,NDCG@10,threshold,correct_refusal,wrong_refusal
-bm25_raw,BM25 âm tiết baseline TV1 (câu không dấu vẫn tìm trên chỉ mục có dấu),validation,27,5,0.0864,0.2099,0.3333,0.5247,0.5802,0.2858,0.31,6.8436,0.2,0.037
-bm25,"BM25 âm tiết (k1 1.5, b 0.9)",validation,27,5,0.0864,0.3025,0.4012,0.5617,0.6481,0.3186,0.3499,6.9402,0.2,0.0
-dense,SBERT bkai-foundation-models/vietnamese-bi-encoder,validation,27,5,0.216,0.3395,0.5,0.5827,0.6969,0.4236,0.4497,0.2195,0.2,0.0741
-hybrid,"Hybrid BM25 + SBERT (minmax, alpha 0.8)",validation,27,5,0.2716,0.4074,0.5185,0.6525,0.7586,0.5179,0.5251,0.853,0.2,0.037
-rerank,Rerank itdainb/PhoRanker trên top-20 hybrid (blend 0.4),validation,27,5,0.2778,0.4167,0.4846,0.6525,0.7586,0.5748,0.5444,0.7094,0.4,0.037
-bm25_raw,BM25 âm tiết baseline TV1 (câu không dấu vẫn tìm trên chỉ mục có dấu),test,51,13,0.1585,0.3007,0.365,0.4745,0.5513,0.3937,0.3639,6.8436,0.0769,0.0784
-bm25,"BM25 âm tiết (k1 1.5, b 0.9)",test,51,13,0.1879,0.3585,0.4229,0.565,0.6549,0.4604,0.427,6.9402,0.0,0.0196
-dense,SBERT bkai-foundation-models/vietnamese-bi-encoder,test,51,13,0.2556,0.4549,0.5072,0.5683,0.6585,0.5936,0.5186,0.2195,0.2308,0.0392
-hybrid,"Hybrid BM25 + SBERT (minmax, alpha 0.8)",test,51,13,0.285,0.4516,0.5448,0.6418,0.7418,0.6253,0.5624,0.853,0.1538,0.0392
-rerank,Rerank itdainb/PhoRanker trên top-20 hybrid (blend 0.4),test,51,13,0.3013,0.4964,0.5879,0.6663,0.7418,0.6724,0.5946,0.7094,0.2308,0.098
+bm25_raw,BM25 âm tiết baseline TV1 (câu không dấu vẫn tìm trên chỉ mục có dấu),validation,36,5,0.0995,0.2199,0.3356,0.5509,0.5981,0.3509,0.3499,6.8436,0.2,0.0278
+bm25,"BM25 âm tiết (k1 1.5, b 0.9)",validation,36,5,0.0995,0.2894,0.3866,0.5935,0.6583,0.376,0.387,6.9402,0.2,0.0
+dense,SBERT bkai-foundation-models/vietnamese-bi-encoder,validation,36,5,0.2116,0.3495,0.5069,0.5907,0.6875,0.5075,0.4717,0.2097,0.2,0.0556
+hybrid,"Hybrid BM25 + SBERT (minmax, alpha 0.8)",validation,36,5,0.244,0.3954,0.5245,0.6431,0.7338,0.5574,0.5258,0.853,0.2,0.0278
+rerank,Rerank itdainb/PhoRanker trên top-20 hybrid + tối đa 10 chunk BM25 (blend 0.4),validation,36,5,0.2579,0.4125,0.5139,0.656,0.7648,0.621,0.5606,0.869,0.4,0.0556
