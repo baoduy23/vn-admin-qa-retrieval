@@ -90,7 +90,7 @@ def test_answer_prefers_line_with_evidence():
 
 
 def test_refuse_low_score_and_no_evidence():
-    r = fake_engine([0.2, 0.1]).answer("Thủ tục xin giấy phép kinh doanh karaoke thế nào?")
+    r = fake_engine([0.2, 0.1]).answer("Thủ tục xin cấp giấy phép xây dựng nhà ở thế nào?")
     assert r["refused"] and r["reason"] == "low_score"
     assert fake_engine([0.2, 0.1]).answer("Thủ tục tách thửa đất thế nào?")["reason"] == "out_of_scope"
     r = fake_engine([0.9, 0.8]).answer("Lệ phí khai sinh là bao nhiêu tiền?")

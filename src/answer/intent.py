@@ -183,6 +183,8 @@ OUT_OF_SCOPE = [
     ("giao thông", r"bằng lái|giấy phép lái xe|đăng ký xe|đăng kiểm|xe máy|ô tô"),
     ("quốc tịch", r"quốc tịch"),
     ("bảo hiểm, lao động", r"bảo hiểm xã hội|bhxh|lương hưu|hợp đồng lao động|thất nghiệp"),
+    ("doanh nghiệp, kinh doanh", r"thành lập công ty|doanh nghiệp|đăng ký kinh doanh|hộ kinh doanh|"
+                                 r"giấy phép kinh doanh|an toàn thực phẩm"),
 ]
 # Có mẫu này thì từ chối dù câu có nhắc việc hộ tịch: phần đó thuộc luật khác hoặc ngoài kho.
 # "Ly hôn thì tài sản chung chia thế nào?" nhắc ly hôn nhưng hỏi chia tài sản (Luật Hôn nhân và gia đình, tòa án).
