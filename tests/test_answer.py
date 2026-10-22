@@ -2,7 +2,7 @@
 from src.answer.answer import AnswerEngine
 from src.answer.evaluate_answer import token_f1
 from src.answer.intent import (expected_type, find_procedures, has_evidence, is_underspecified,
-                               split_multi_intent)
+                               out_of_scope_topic, split_multi_intent)
 from src.answer.retriever import Retriever
 from src.answer.template import citation, format_answer, highlight_html
 from src.app import db
@@ -90,8 +90,9 @@ def test_answer_prefers_line_with_evidence():
 
 
 def test_refuse_low_score_and_no_evidence():
-    r = fake_engine([0.2, 0.1]).answer("Thủ tục tách thửa đất thế nào?")
+    r = fake_engine([0.2, 0.1]).answer("Thủ tục xin cấp giấy phép xây dựng nhà ở thế nào?")
     assert r["refused"] and r["reason"] == "low_score"
+    assert fake_engine([0.2, 0.1]).answer("Thủ tục tách thửa đất thế nào?")["reason"] == "out_of_scope"
     r = fake_engine([0.9, 0.8]).answer("Lệ phí khai sinh là bao nhiêu tiền?")
     assert r["refused"] and r["reason"] == "no_evidence"
     assert fake_engine([0.9, 0.8]).answer("   ")["reason"] == "empty"
@@ -117,3 +118,37 @@ def test_db_roundtrip(tmp_path):
     rows = db.history(path=path)
     assert rows[0]["top_chunk_id"] == "60.2014.QH13__D16__K1" and rows[0]["rating"] == -1
     assert db.summary(path) == {"n": 1, "refused": 0, "up": 0, "down": 1}
+
+
+# ------------------------------------------------------------- chọn khoản bằng cross-encoder
+def test_line_scorer_overrides_idf():
+    def fake(question, chunk, lines):              # giả PhoRanker: thích dòng thứ 2
+        return [0.0, 1.0][: len(lines)]
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", lambda q, k: [(CHUNKS[1]["chunk_id"], 0.9)]),
+                       chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5, line_scorer=fake)
+    r = eng.answer("Trách nhiệm đăng ký khai sinh cho con của cha mẹ?")
+    assert r["parts"][0]["quote_lines"][0].startswith("2. Công chức")
+    assert fake_engine([0.1, 0.9]).line_scorer is None      # truyền retriever giả → không nạp model
+
+
+# ------------------------------------------------------------- câu ngoài phạm vi
+def test_out_of_scope_topic():
+    assert out_of_scope_topic("Làm hộ chiếu mất bao lâu?") == "hộ chiếu, xuất nhập cảnh"
+    assert out_of_scope_topic("bang lai xe het han doi o dau") == "giao thông"          # gõ không dấu
+    assert out_of_scope_topic("Ly hôn thì tài sản chung chia thế nào?")                  # nhắc ly hôn vẫn chặn
+    # có nhắc việc hộ tịch → để truy hồi xử lý, không chặn
+    assert out_of_scope_topic("Làm khai sinh cho con có cần căn cước của cha mẹ không?") is None
+    assert out_of_scope_topic("Tôi đang tạm trú ở Bình Dương thì làm khai sinh cho con ở đó được không?") is None
+    assert out_of_scope_topic("Đăng ký khai sinh cần giấy tờ gì?") is None
+
+
+def test_out_of_scope_refused_before_retrieval():
+    called = []
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", lambda q, k: called.append(q) or [(CHUNKS[0]["chunk_id"], 0.99)]),
+                       chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5)
+    r = eng.answer("Làm hộ chiếu mất bao lâu?")
+    assert r["refused"] and r["reason"] == "out_of_scope" and r["parts"] == [] and called == []
+    assert "hộ chiếu" in r["answer"]
+    off = AnswerEngine(dict(CFG, out_of_scope_filter=False), retriever=eng.retriever, chunks=CHUNKS,
+                       similar=lambda q, k: [], threshold=0.5)
+    assert not off.answer("Làm hộ chiếu ở đâu?")["refused"]                             # tắt lọc: như cũ

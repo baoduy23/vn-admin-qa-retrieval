@@ -54,18 +54,23 @@ def line_score(question_terms: set[str], line: str, idf: IDF) -> float:
     return hit / (1 + 0.01 * len(words))
 
 
-def best_quote(question: str, chunk: dict, idf: IDF, prefer: re.Pattern | None = None) -> list[str]:
+def best_quote(question: str, chunk: dict, idf: IDF, prefer: re.Pattern | None = None,
+               line_scorer=None) -> list[str]:
     """Chọn dòng (khoản hoặc điểm) khớp câu hỏi nhất trong display_text, giữ nguyên văn.
     - prefer: mẫu bằng chứng của loại câu hỏi (vd "60 ngày" cho câu hỏi thời hạn). Có dòng nào chứa nó
       thì chỉ chọn trong các dòng đó: hỏi "bao lâu" thì dòng "có giá trị 6 tháng" phải thắng dòng
       "không có giá trị khi sử dụng sai mục đích" dù dòng sau trùng nhiều chữ hơn.
     - Dòng chọn là điểm "a)" → thêm dòng dẫn ở trên ("1. Hồ sơ gồm:") để câu đọc được.
-    - Dòng chọn kết thúc bằng ":" → thêm các điểm ngay sau, tới khi đủ MAX_QUOTE_WORDS."""
+    - Dòng chọn kết thúc bằng ":" → thêm các điểm ngay sau, tới khi đủ MAX_QUOTE_WORDS.
+    - line_scorer (src/answer/line_scorer.py): có thì chấm dòng bằng cross-encoder thay cho IDF."""
     lines = _lines(chunk.get("display_text", ""))
     if not lines:
         return []
     terms = set(content_syllables(question))
-    scores = [line_score(terms, l, idf) for l in lines]
+    if line_scorer is not None and len(lines) > 1:
+        scores = line_scorer(question, chunk, lines)
+    else:
+        scores = [line_score(terms, l, idf) for l in lines]
     pool = [j for j, l in enumerate(lines) if prefer and prefer.search(l.lower())] or range(len(lines))
     i = max(pool, key=lambda j: (scores[j], -j))
     picked = [i]

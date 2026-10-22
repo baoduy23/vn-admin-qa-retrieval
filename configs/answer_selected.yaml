@@ -1,10 +1,10 @@
 # SINH TỰ ĐỘNG bởi python -m src.answer.evaluate_answer (chọn trên validation), không sửa tay.
-# 2026-10-16T12:19:54. answer() đọc file này; ngưỡng là điểm top-1 của từng loại pipeline.
+# 2026-10-19T10:20:38. answer() đọc file này; ngưỡng là điểm top-1 của từng loại pipeline.
 thresholds:
   rerank: 0.7094
-  hybrid: 0.853
-  dense: 0.21945
-  bm25: 6.9402
+  hybrid: 0.0
+  dense: 0.0
+  bm25: 0.0
 evidence_check:
   rerank: true
   hybrid: true

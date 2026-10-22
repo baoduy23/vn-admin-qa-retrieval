@@ -102,7 +102,8 @@ def run_answers(engine: AnswerEngine, questions, qrels) -> list[dict]:
     rows = []
     for q in questions:
         r = engine.answer(q["question"])
-        p = r["parts"][0]
+        # bị lọc ngoài phạm vi (hoặc câu rỗng) thì không có ý nào được truy hồi
+        p = r["parts"][0] if r["parts"] else dict(chunk_id=None, quote_lines=[], top_score=0.0)
         top = engine.by_id.get(p["chunk_id"]) if p["chunk_id"] else None
         rel = qrels.get(q["question_id"], {})
         quote = " ".join(p["quote_lines"])

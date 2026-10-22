@@ -9,7 +9,7 @@ import pytest
 from src.data.split import ROOT
 from src.retrieval.fusion import fuse, minmax, ranks, top_k
 from src.retrieval.query import clean_query, has_diacritics, strip_accents
-from src.retrieval.retrieve import Pipeline, load_chunks, load_config
+from src.retrieval.retrieve import Pipeline, load_chunks, load_config, rerank_candidates, rerank_run
 from src.retrieval.similar import SimilarIndex, question_bank
 
 BM25_SPEC = {"pipeline": "bm25"}
@@ -84,6 +84,35 @@ def test_unaccented_query_finds_same_top(bm25):
     acc = [c for c, _ in bm25.search("đăng ký khai tử", 10)]
     plain = [c for c, _ in bm25.search("dang ky khai tu", 10)]
     assert set(acc[:3]) & set(plain)
+
+
+def test_rerank_candidates_adds_bm25_misses():
+    ids = ["a", "b", "c", "d"]
+    first = [0.9, 0.8, 0.1, 0.2]          # bước đầu: top-2 = a, b
+    bm25 = [0.0, 5.0, 9.0, 0.0]           # BM25: c đứng đầu nhưng bước đầu bỏ sót
+    assert rerank_candidates(ids, first, bm25, 2) == [("a", 0.9), ("b", 0.8)]
+    # c được thêm với điểm bước đầu của nó; b đã có; a, d điểm BM25 = 0 nên không thêm
+    assert rerank_candidates(ids, first, bm25, 2, extra_bm25=3) == [("a", 0.9), ("b", 0.8), ("c", 0.1)]
+
+
+def test_rerank_run_scores_each_pair_once():
+    class Fake:
+        """Giả Reranker (không import rerank.py vì nó cần numpy / torch): chỉ có scores + rerank."""
+        def __init__(self):
+            self.calls = []
+
+        def rerank(self, question, candidates, blend=0.0, ce_scores=None):
+            return sorted(zip([c for c, _ in candidates], ce_scores), key=lambda x: -x[1])
+
+        def scores(self, question, chunk_ids):
+            self.calls.append(list(chunk_ids))
+            return [float(len(c)) for c in chunk_ids]     # chunk id dài hơn = điểm cao hơn
+
+    rr, cache, qs = Fake(), {}, [{"question_id": "Q1", "question": "x"}]
+    small = rerank_run(rr, {"Q1": [("a", 1.0), ("bb", 0.5)]}, qs, 0.0, cache)
+    big = rerank_run(rr, {"Q1": [("a", 1.0), ("bb", 0.5), ("ccc", 0.1)]}, qs, 0.0, cache)
+    assert rr.calls == [["a", "bb"], ["ccc"]]            # lần 2 chỉ chấm chunk mới
+    assert [c for c, _ in small["Q1"]] == ["bb", "a"] and big["Q1"][0][0] == "ccc"
 
 
 def test_invalid_pipeline_raises(chunks):

@@ -17,13 +17,16 @@ r["notes"]              # lưu ý: thẩm quyền cấp huyện → cấp xã (N
 ## Các bước
 
 ```
-câu hỏi ─► tách ý (intent.split_multi_intent) ─► mỗi ý: retrieve(ý, k)
+câu hỏi ─► lĩnh vực khác (hộ chiếu, đất đai, thuế...) và không nhắc việc hộ tịch nào? ── có ──► từ chối (out_of_scope)
+   │ không
+   ▼
+tách ý (intent.split_multi_intent) ─► mỗi ý: retrieve(ý, k)
                                                   │
                      điểm top-1 < τ ? ──── có ──► từ chối (low_score)
                                                   │ không
      câu đòi con số (tiền / phạt / tuổi / thời hạn) mà 3 đoạn đầu không có? ── có ──► từ chối (no_evidence)
                                                   │ không
-          chọn dòng (khoản / điểm) khớp nhất trong đoạn top-1 (template.best_quote)
+          chọn dòng (khoản / điểm) khớp nhất trong đoạn top-1 (template.best_quote; IDF hoặc PhoRanker)
                                                   ▼
                 Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>"
 ```
@@ -32,7 +35,9 @@ câu hỏi ─► tách ý (intent.split_multi_intent) ─► mỗi ý: retrieve
 |---|---|
 | `answer.py` | `AnswerEngine`, `answer(q)`: ghép các bước trên, nguồn, câu tương tự, lưu ý pháp lý |
 | `template.py` | Mẫu câu trả lời; `best_quote` chọn dòng có tổng IDF âm tiết trùng câu hỏi cao nhất (ưu tiên dòng có con số đúng loại câu hỏi đòi); `citation` đọc số Khoản/Điểm từ đầu dòng; `highlight_html` tô chữ trùng |
-| `intent.py` | Luật nhận dạng: tách câu nhiều ý, loại con số câu hỏi đòi + kiểm tra căn cứ, câu thiếu thông tin, chủ đề (việc hộ tịch) cho thống kê |
+| `intent.py` | Luật nhận dạng: tách câu nhiều ý, loại con số câu hỏi đòi + kiểm tra căn cứ, câu thiếu thông tin, chủ đề (việc hộ tịch) cho thống kê, câu ngoài phạm vi (`out_of_scope_topic`) |
+| `line_scorer.py` | Chấm từng khoản / điểm bằng PhoRanker để chọn đoạn trích (`quote.scorer: rerank` trong `configs/answer.yaml`; mặc định `idf`) |
+| `compare_quote.py` | So 2 cách chọn khoản (IDF / PhoRanker) trên train + validation, xuất `results/answer/quote_compare.csv` để chấm tay (cần torch) |
 | `text.py` | Âm tiết bỏ dấu, hư từ, IDF |
 | `retriever.py` | Nạp `retrieve()` của TV3 theo `configs/answer.yaml`; lỗi thì lùi về BM25 |
 | `evaluate_answer.py` | Chọn τ trên validation, đánh giá câu trả lời, so tách / không tách câu nhiều ý |

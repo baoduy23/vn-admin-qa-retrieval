@@ -9,6 +9,9 @@ kiểm tra trên train + validation (không nhìn test):
   mà đoạn tìm được không chứa con số loại đó thì từ chối, thay vì trích một đoạn "gần giống".
   Đây là cách chặn câu unsupported như "lệ phí ... bao nhiêu tiền" khi kho không có biểu phí.
 - is_underspecified: câu quá ngắn và không nhắc việc hộ tịch nào → vẫn trả lời nhưng gợi ý hỏi rõ hơn.
+- out_of_scope_topic: câu hỏi về lĩnh vực khác (hộ chiếu, căn cước, đất đai, thuế, bằng lái...) mà không
+  nhắc việc hộ tịch nào → từ chối ngay, không truy hồi. Ngưỡng τ một mình không chặn được vì retrieve()
+  luôn trả về đoạn "gần nhất", và với cross-encoder điểm đoạn đó vẫn có thể vượt τ.
 
 So khớp CÓ DẤU khi câu hỏi có dấu, vì bỏ dấu thì nhiều từ trùng nhau: "đầu" và "đâu" cùng thành
 "dau", "máy" và "mấy" cùng thành "may", "phát" và "phạt" cùng thành "phat". Câu gõ không dấu thì
@@ -165,3 +168,40 @@ def chunk_topic(chunk: dict) -> str:
 def is_underspecified(question: str, max_content: int = 5) -> bool:
     """Câu ngắn và không nhắc việc hộ tịch cụ thể nào: "Đăng ký mất bao lâu?"."""
     return not find_procedures(question) and len(content_syllables(question)) <= max_content
+
+
+# --------------------------------------------------- câu ngoài phạm vi
+# (tên lĩnh vực, mẫu). Chỉ từ chối khi câu KHÔNG nhắc việc hộ tịch nào (find_procedures rỗng), để
+# "làm khai sinh có cần căn cước không" hay "tạm trú ở Bình Dương làm khai sinh được không" vẫn được trả lời.
+# Viết từ định nghĩa out_of_scope trong guideline gán nhãn và câu train + validation, không nhìn test.
+OUT_OF_SCOPE = [
+    ("hộ chiếu, xuất nhập cảnh", r"hộ chiếu|visa|thị thực|xuất cảnh|nhập cảnh"),
+    ("căn cước, định danh", r"căn cước|cccd|cmnd|chứng minh nhân dân|định danh điện tử|vneid"),
+    ("cư trú", r"đăng ký thường trú|đăng ký tạm trú|khai báo tạm trú|nhập hộ khẩu|tách hộ khẩu|chuyển hộ khẩu"),
+    ("đất đai, nhà ở", r"đất đai|thửa đất|sử dụng đất|sổ đỏ|sổ hồng|nhà đất|mua nhà|bán nhà"),
+    ("thuế", r"thuế"),
+    ("giao thông", r"bằng lái|giấy phép lái xe|đăng ký xe|đăng kiểm|xe máy|ô tô"),
+    ("quốc tịch", r"quốc tịch"),
+    ("bảo hiểm, lao động", r"bảo hiểm xã hội|bhxh|lương hưu|hợp đồng lao động|thất nghiệp"),
+    ("doanh nghiệp, kinh doanh", r"thành lập công ty|doanh nghiệp|đăng ký kinh doanh|hộ kinh doanh|"
+                                 r"giấy phép kinh doanh|an toàn thực phẩm"),
+]
+# Có mẫu này thì từ chối dù câu có nhắc việc hộ tịch: phần đó thuộc luật khác hoặc ngoài kho.
+# "Ly hôn thì tài sản chung chia thế nào?" nhắc ly hôn nhưng hỏi chia tài sản (Luật Hôn nhân và gia đình, tòa án).
+OUT_OF_SCOPE_ALWAYS = [
+    ("chia tài sản, cấp dưỡng khi ly hôn", r"tài sản chung|chia tài sản|cấp dưỡng|quyền nuôi con"),
+    ("Luật Hộ tịch mới (hiệu lực 2027, chưa có trong kho)",
+     r"luật hộ tịch (mới|năm 2026|năm 2027|2026|2027)|03/2026/qh16"),
+]
+_OOS = [(name, Pattern(rf"\b(?:{pat})")) for name, pat in OUT_OF_SCOPE]
+_OOS_ALWAYS = [(name, Pattern(rf"\b(?:{pat})")) for name, pat in OUT_OF_SCOPE_ALWAYS]
+
+
+def out_of_scope_topic(question: str) -> str | None:
+    """Tên lĩnh vực ngoài hộ tịch mà câu hỏi nói tới, hoặc None nếu câu (có thể) thuộc phạm vi."""
+    for name, pat in _OOS_ALWAYS:
+        if pat.search(question):
+            return name
+    if find_procedures(question):
+        return None
+    return next((name for name, pat in _OOS if pat.search(question)), None)
