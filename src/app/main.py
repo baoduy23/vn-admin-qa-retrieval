@@ -224,7 +224,8 @@ def answer_card(engine, r: dict) -> None:
     for i, p in enumerate(r["parts"], 1):
         head = f'<div class="part-q">Ý {i}: {html.escape(p["question"])}</div>' if multi else ""
         if p["refused"]:
-            blocks.append(f'{head}<p><span class="chip muted">Chưa đủ căn cứ</span>'
+            chip = "Ngoài phạm vi" if p["reason"] == "out_of_scope" else "Chưa đủ căn cứ"
+            blocks.append(f'{head}<p><span class="chip muted">{chip}</span>'
                           f'{html.escape(AnswerEngine.refusal_text(p))}</p>')
             continue
         m = chunk_meta(engine, r, p["chunk_id"])
