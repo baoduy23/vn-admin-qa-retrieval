@@ -152,3 +152,18 @@ def test_out_of_scope_refused_before_retrieval():
     off = AnswerEngine(dict(CFG, out_of_scope_filter=False), retriever=eng.retriever, chunks=CHUNKS,
                        similar=lambda q, k: [], threshold=0.5)
     assert not off.answer("Làm hộ chiếu ở đâu?")["refused"]                             # tắt lọc: như cũ
+
+
+def test_no_overlap_refused_before_retrieval():
+    # điểm rerank là minmax: câu vô nghĩa vẫn có top-1 = 0.99 > τ, phải chặn trước khi truy hồi
+    called = []
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", lambda q, k: called.append(q) or [(CHUNKS[0]["chunk_id"], 0.99)]),
+                       chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5)
+    for q in ("hello world", "hello word", "asdf qwer"):
+        r = eng.answer(q)
+        assert r["refused"] and r["reason"] == "no_overlap" and r["parts"] == [], q
+    assert called == []
+    assert not eng.answer("dang ky khai sinh can giay gi")["refused"]                  # không dấu vẫn khớp kho
+    off = AnswerEngine(dict(CFG, no_overlap_filter=False), retriever=eng.retriever, chunks=CHUNKS,
+                       similar=lambda q, k: [], threshold=0.5)
+    assert not off.answer("hello world")["refused"]                                    # tắt lọc: như cũ
