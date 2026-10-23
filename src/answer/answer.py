@@ -151,7 +151,8 @@ class AnswerEngine:
         topic = out_of_scope_topic(own) if self.cfg.get("out_of_scope_filter", True) else None
         if not topic:
             return None
-        return dict(question=question, hits=[], top_score=0.0, refused=True, reason="out_of_scope",
+        # hiện đúng chữ người dùng gõ cho ý này, không kèm chủ đề ghép ("Khai tử cho bố Sổ đỏ ...")
+        return dict(question=own, hits=[], top_score=0.0, refused=True, reason="out_of_scope",
                     answer="", quote_lines=[], chunk_id=None, expected_type=None, out_of_scope_topic=topic)
 
     @staticmethod

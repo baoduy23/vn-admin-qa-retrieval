@@ -175,6 +175,7 @@ def test_out_of_scope_part_of_multi_intent():
     p1, p2 = r["parts"]
     assert not p1["refused"]
     assert p2["refused"] and p2["reason"] == "out_of_scope" and p2["top_chunks"] == []
+    assert p2["question"] == "Sổ đỏ sang tên thế nào"                     # không kèm chủ đề ghép từ ý 1
     assert "đất đai" in r["answer"]
 
 
