@@ -98,7 +98,9 @@ ANSWER_TYPES = [
      # Không nhận chữ "phạt" đơn lẻ: "án phạt tù" không hỏi mức phạt, và bản bỏ dấu "phat" khớp cả "phát"
      # ("phat hien sai sot" → đòi bằng chứng "phạt" → từ chối oan). Chỉ nhận cụm hỏi mức xử phạt.
      Pattern(r"\b(xử phạt|mức phạt|bị phạt(?!\s+(hiện|tù))|phạt bao nhiêu|phạt tiền|phạt hành chính|chế tài)\b"),
-     re.compile(r"\bphạt\b")),
+     # bằng chứng phải là phạt hành chính: "án phạt tù" (TT 04/2020 Điều 24, khai sinh lưu động) không trả lời
+     # được câu hỏi mức phạt, trước đây lại được tính là bằng chứng nên hệ thống trích luôn đoạn đó
+     re.compile(r"\bphạt\b(?!\s+tù)")),
     ("so_tien",
      Pattern(r"\b(lệ phí|phí|tiền)\b.*\b(bao nhiêu|mấy|mức)\b|\b(bao nhiêu|mấy|mức)\b.*\b(lệ phí|phí|tiền)\b"),
      re.compile(r"\d[\d.,]*\s*(đồng|nghìn|ngàn|triệu)\b|miễn lệ phí|miễn thu|không thu lệ phí|không phải nộp lệ phí")),

@@ -60,6 +60,8 @@ def test_expected_type_and_evidence():
     assert expected_type("Người đang chấp hành án phạt tù có đăng ký kết hôn được không?") is None
     assert expected_type("khai sinh tre bi phat bao nhieu") == "muc_phat"
     assert expected_type("Chậm khai tử có bị xử phạt hành chính không?") == "muc_phat"
+    assert not has_evidence("muc_phat", ["Cha mẹ bị bắt, tạm giam hoặc đang thi hành án phạt tù."])
+    assert has_evidence("muc_phat", ["Phạt tiền từ 200.000 đồng đến 500.000 đồng."])
     assert expected_type("Đăng ký khai sinh cần giấy tờ gì?") is None
     assert has_evidence("thoi_han", ["Trong thời hạn 60 ngày kể từ ngày sinh"])
     assert not has_evidence("so_tien", ["phải nộp lệ phí đăng ký hộ tịch"])
