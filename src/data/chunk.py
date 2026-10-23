@@ -26,7 +26,7 @@ ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 
 
 
 # ---------- 1. Tách từ và đếm token ----------
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=8192)                   # có giới hạn: app gọi segment cho mọi câu hỏi người dùng gõ
 def segment(text):
     """Tách từ bằng underthesea: "đăng ký khai sinh" → "đăng_ký khai_sinh".
     Tách riêng từng phần quanh " | " của tiền tố, không thì underthesea nối dấu | với chữ sau ("|_Khoản")."""

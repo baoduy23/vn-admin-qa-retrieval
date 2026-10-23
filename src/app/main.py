@@ -160,7 +160,7 @@ def search_form(compact: bool) -> bool:
                     unsafe_allow_html=True)
     with st.form("ask_form", border=False):
         c1, c2 = st.columns([5, 1.1], gap="small", vertical_alignment="bottom")
-        c1.text_input("Câu hỏi", key="q", label_visibility="collapsed",
+        c1.text_input("Câu hỏi", key="q", label_visibility="collapsed", max_chars=300,
                       placeholder="Thông tin bạn cần, ví dụ: làm giấy khai sinh cho con cần giấy tờ gì?")
         submitted = c2.form_submit_button("Tra cứu", icon=":material/search:", width="stretch")
     with st.container(key="quick"):

@@ -28,7 +28,8 @@ from functools import lru_cache
 import yaml
 
 from src.answer.intent import (TYPE_LABEL, chunk_topic, evidence_pattern, expected_type, find_procedures, has_evidence,
-                               is_underspecified, out_of_scope_topic, split_multi_intent)
+                               is_underspecified, out_of_scope_topic, split_multi_intent,
+                               topic_head)
 from src.answer.line_scorer import load_line_scorer
 from src.answer.retriever import Retriever, load_answer_config, load_retriever
 from src.answer.template import best_quote, citation, format_answer, highlight_html
@@ -141,10 +142,22 @@ class AnswerEngine:
         """Có ít nhất một âm tiết của câu hỏi xuất hiện trong kho (so bản bỏ dấu), tức BM25 top-1 > 0."""
         return any(t in self.vocab for t in tokenize(strip_accents(question)))
 
+    def out_of_scope_part(self, question: str, head: str = "") -> dict | None:
+        """Lọc phạm vi cho từng ý của câu nhiều ý: "Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?" qua được
+        bước lọc cả câu (có "khai tử") nhưng ý 2 hỏi đất đai, nên từ chối riêng ý đó thay vì trích luật hộ tịch.
+        Chỉ xét chữ của chính ý đó, bỏ phần chủ đề (head) split_multi_intent ghép từ vế đầu: "Chồng tôi quốc tịch
+        Úc, nộp gì" có "quốc tịch" là do ghép, ý thật là "nộp gì" (hồ sơ khai tử)."""
+        own = question[len(head):].strip() if head and question.startswith(head + " ") else question
+        topic = out_of_scope_topic(own) if self.cfg.get("out_of_scope_filter", True) else None
+        if not topic:
+            return None
+        return dict(question=question, hits=[], top_score=0.0, refused=True, reason="out_of_scope",
+                    answer="", quote_lines=[], chunk_id=None, expected_type=None, out_of_scope_topic=topic)
+
     @staticmethod
     def refusal_text(part: dict) -> str:
         label = TYPE_LABEL.get(part.get("expected_type") or "", "thông tin")
-        return REFUSAL_TEXT[part["reason"]].format(label=label)
+        return REFUSAL_TEXT[part["reason"]].format(label=label, topic=part.get("out_of_scope_topic") or "")
 
     # ------------------------------------------------------------ cả câu
     def answer(self, question: str, k: int | None = None) -> dict:
@@ -168,7 +181,9 @@ class AnswerEngine:
 
         split = self.cfg.get("multi_intent", {}).get("split", True)
         sub_questions = split_multi_intent(q) if split else [q]
-        parts = [self.answer_part(s, k) for s in sub_questions]
+        head = topic_head(sub_questions[0]) if len(sub_questions) > 1 else ""
+        parts = [self.out_of_scope_part(s, head if i else "") or self.answer_part(s, k)
+                 for i, s in enumerate(sub_questions)]
         refused = all(p["refused"] for p in parts)
 
         # câu trả lời: một ý → 1 đoạn; nhiều ý → đánh số từng ý

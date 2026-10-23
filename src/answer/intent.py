@@ -39,7 +39,9 @@ class Pattern:
 
 
 # ---------------------------------------------------------------- câu nhiều ý
-SEPARATOR = re.compile(r"\s*(?:,|;|\s(?:và|va|còn|rồi)\s)\s*", re.IGNORECASE)
+# "?" giữa câu cũng là ranh giới: "Khai sinh cần giấy gì? Kết hôn mất bao lâu?". Không tách theo "."
+# vì số hiệu văn bản ("NĐ 123/2015", "Điều 5.") có dấu chấm. clean_query đã gộp xuống dòng thành dấu cách.
+SEPARATOR = re.compile(r"\s*(?:,|;|\?\s+|\s(?:và|va|còn|rồi)\s)\s*", re.IGNORECASE)
 QUESTION_WORD = Pattern(r"\b(gì|đâu|bao lâu|bao nhiêu|mấy|thế nào|ra sao|làm sao|ai|nào|khi nào)\b"
                         r"|\bkhông\s*\??$")
 # Từ đánh dấu hết phần "chủ đề" ở đầu câu: "Khai sinh cho con | thì nộp ở đâu"
@@ -82,7 +84,8 @@ def split_multi_intent(question: str) -> list[str]:
     head = topic_head(parts[0])
     out = [parts[0]]
     for p in parts[1:]:
-        if head and strip_accents(head) not in strip_accents(p):
+        # vế đã tự nêu việc hộ tịch ("... ? Kết hôn mất bao lâu") thì không ghép chủ đề vế đầu vào
+        if head and strip_accents(head) not in strip_accents(p) and not HOTICH_NAMES.search(p):
             p = f"{head} {p}"
         out.append(p)
     return out
@@ -92,7 +95,9 @@ def split_multi_intent(question: str) -> list[str]:
 # (tên, mẫu nhận câu hỏi, mẫu bằng chứng phải có trong đoạn trích)
 ANSWER_TYPES = [
     ("muc_phat",
-     Pattern(r"\b(phạt|xử phạt|chế tài)\b"),
+     # Không nhận chữ "phạt" đơn lẻ: "án phạt tù" không hỏi mức phạt, và bản bỏ dấu "phat" khớp cả "phát"
+     # ("phat hien sai sot" → đòi bằng chứng "phạt" → từ chối oan). Chỉ nhận cụm hỏi mức xử phạt.
+     Pattern(r"\b(xử phạt|mức phạt|bị phạt(?!\s+(hiện|tù))|phạt bao nhiêu|phạt tiền|phạt hành chính|chế tài)\b"),
      re.compile(r"\bphạt\b")),
     ("so_tien",
      Pattern(r"\b(lệ phí|phí|tiền)\b.*\b(bao nhiêu|mấy|mức)\b|\b(bao nhiêu|mấy|mức)\b.*\b(lệ phí|phí|tiền)\b"),
@@ -171,7 +176,7 @@ def is_underspecified(question: str, max_content: int = 5) -> bool:
 
 
 # --------------------------------------------------- câu ngoài phạm vi
-# (tên lĩnh vực, mẫu). Chỉ từ chối khi câu KHÔNG nhắc việc hộ tịch nào (find_procedures rỗng), để
+# (tên lĩnh vực, mẫu). Chỉ từ chối khi câu KHÔNG nhắc việc hộ tịch nào (HOTICH_NAMES không khớp), để
 # "làm khai sinh có cần căn cước không" hay "tạm trú ở Bình Dương làm khai sinh được không" vẫn được trả lời.
 # Viết từ định nghĩa out_of_scope trong guideline gán nhãn và câu train + validation, không nhìn test.
 OUT_OF_SCOPE = [
@@ -197,11 +202,19 @@ _OOS = [(name, Pattern(rf"\b(?:{pat})")) for name, pat in OUT_OF_SCOPE]
 _OOS_ALWAYS = [(name, Pattern(rf"\b(?:{pat})")) for name, pat in OUT_OF_SCOPE_ALWAYS]
 
 
+# Tên việc hộ tịch "chắc chắn" dùng để tha cho câu có từ ngoài phạm vi. Không dùng cả PROCEDURES vì trong đó có
+# từ đời thường ("chết", "vợ chồng", "thay đổi", "online"): "bố chết thì sổ đỏ sang tên thế nào" khớp "chết"
+# → Khai tử → lọt lọc đất đai, dù câu hỏi chuyện sang tên đất.
+HOTICH_NAMES = Pattern(r"\b(?:khai sinh|giấy chứng sinh|kết hôn|khai tử|báo tử|hộ tịch|tình trạng hôn nhân|"
+                       r"nhận cha|nhận mẹ|nhận con|giám hộ|cải chính|trích lục|đăng ký lại|ly hôn|"
+                       r"thay đổi họ|đổi tên|xác định lại dân tộc)")
+
+
 def out_of_scope_topic(question: str) -> str | None:
     """Tên lĩnh vực ngoài hộ tịch mà câu hỏi nói tới, hoặc None nếu câu (có thể) thuộc phạm vi."""
     for name, pat in _OOS_ALWAYS:
         if pat.search(question):
             return name
-    if find_procedures(question):
+    if HOTICH_NAMES.search(question):
         return None
     return next((name for name, pat in _OOS if pat.search(question)), None)
