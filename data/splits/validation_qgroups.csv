@@ -18,3 +18,11 @@ G116,confusable,3
 G123,direct,3
 G126,paraphrase,3
 G140,confusable,3
+G141,direct,2
+G145,direct,2
+G149,paraphrase,2
+G157,confusable,2
+G159,underspecified,2
+G169,multi_intent,2
+G173,out_of_scope,2
+G176,unsupported,2

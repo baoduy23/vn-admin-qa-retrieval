@@ -38,3 +38,17 @@ G132,multi_intent,3
 G133,unsupported,3
 G134,out_of_scope,3
 G139,paraphrase,3
+G142,direct,2
+G144,direct,2
+G147,direct,2
+G152,paraphrase,2
+G153,confusable,2
+G158,confusable,2
+G161,underspecified,2
+G163,underspecified,2
+G165,multi_intent,2
+G170,multi_intent,2
+G171,out_of_scope,2
+G175,out_of_scope,2
+G178,unsupported,2
+G180,unsupported,2
