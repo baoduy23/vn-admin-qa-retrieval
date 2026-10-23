@@ -44,11 +44,22 @@ def test_no_false_split():
     assert len(split_multi_intent("Bằng lái xe máy hết hạn rồi, giờ làm lại thế nào?")) == 1
 
 
+def test_split_on_question_mark():
+    # hai câu hỏi liền nhau ngăn bằng "?"; vế 2 tự nêu việc hộ tịch nên không ghép "Khai sinh" vào
+    assert split_multi_intent("Khai sinh cần giấy gì? Kết hôn mất bao lâu?") == ["Khai sinh cần giấy gì",
+                                                                                 "Kết hôn mất bao lâu"]
+    assert len(split_multi_intent("Khai sinh cần giấy gì?")) == 1
+
+
 def test_expected_type_and_evidence():
     assert expected_type("Lệ phí cấp bản sao trích lục là bao nhiêu tiền?") == "so_tien"
     assert expected_type("Thời hạn đăng ký khai sinh là bao lâu?") == "thoi_han"
     assert expected_type("Không đi khai tử thì bị phạt không?") == "muc_phat"
     assert expected_type("Cơ quan nào cấp giấy xác nhận phát hiện sai sót?") is None   # "phát" ≠ "phạt"
+    assert expected_type("phat hien sai sot trong giay khai sinh thi lam gi") is None   # không dấu: "phat" ≠ mức phạt
+    assert expected_type("Người đang chấp hành án phạt tù có đăng ký kết hôn được không?") is None
+    assert expected_type("khai sinh tre bi phat bao nhieu") == "muc_phat"
+    assert expected_type("Chậm khai tử có bị xử phạt hành chính không?") == "muc_phat"
     assert expected_type("Đăng ký khai sinh cần giấy tờ gì?") is None
     assert has_evidence("thoi_han", ["Trong thời hạn 60 ngày kể từ ngày sinh"])
     assert not has_evidence("so_tien", ["phải nộp lệ phí đăng ký hộ tịch"])
@@ -140,6 +151,9 @@ def test_out_of_scope_topic():
     assert out_of_scope_topic("Làm khai sinh cho con có cần căn cước của cha mẹ không?") is None
     assert out_of_scope_topic("Tôi đang tạm trú ở Bình Dương thì làm khai sinh cho con ở đó được không?") is None
     assert out_of_scope_topic("Đăng ký khai sinh cần giấy tờ gì?") is None
+    # "chết" chỉ là từ đời thường, không phải tên thủ tục: câu hỏi sang tên sổ đỏ vẫn bị chặn
+    assert out_of_scope_topic("Bố chết thì sổ đỏ sang tên thế nào?") == "đất đai, nhà ở"
+    assert out_of_scope_topic("Bố chết thì làm khai tử ở đâu?") is None
 
 
 def test_out_of_scope_refused_before_retrieval():
@@ -152,3 +166,28 @@ def test_out_of_scope_refused_before_retrieval():
     off = AnswerEngine(dict(CFG, out_of_scope_filter=False), retriever=eng.retriever, chunks=CHUNKS,
                        similar=lambda q, k: [], threshold=0.5)
     assert not off.answer("Làm hộ chiếu ở đâu?")["refused"]                             # tắt lọc: như cũ
+
+
+def test_out_of_scope_part_of_multi_intent():
+    # cả câu có "khai tử" nên qua lọc cả câu; ý 2 hỏi sổ đỏ phải bị từ chối riêng, ý 1 vẫn được trả lời
+    r = fake_engine([0.9, 0.8]).answer("Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?")
+    assert len(r["parts"]) == 2 and not r["refused"]
+    p1, p2 = r["parts"]
+    assert not p1["refused"]
+    assert p2["refused"] and p2["reason"] == "out_of_scope" and p2["top_chunks"] == []
+    assert "đất đai" in r["answer"]
+
+
+def test_no_overlap_refused_before_retrieval():
+    # điểm rerank là minmax: câu vô nghĩa vẫn có top-1 = 0.99 > τ, phải chặn trước khi truy hồi
+    called = []
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", lambda q, k: called.append(q) or [(CHUNKS[0]["chunk_id"], 0.99)]),
+                       chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5)
+    for q in ("hello world", "hello word", "asdf qwer"):
+        r = eng.answer(q)
+        assert r["refused"] and r["reason"] == "no_overlap" and r["parts"] == [], q
+    assert called == []
+    assert not eng.answer("dang ky khai sinh can giay gi")["refused"]                  # không dấu vẫn khớp kho
+    off = AnswerEngine(dict(CFG, no_overlap_filter=False), retriever=eng.retriever, chunks=CHUNKS,
+                       similar=lambda q, k: [], threshold=0.5)
+    assert not off.answer("hello world")["refused"]                                    # tắt lọc: như cũ

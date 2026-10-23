@@ -160,7 +160,7 @@ def search_form(compact: bool) -> bool:
                     unsafe_allow_html=True)
     with st.form("ask_form", border=False):
         c1, c2 = st.columns([5, 1.1], gap="small", vertical_alignment="bottom")
-        c1.text_input("Câu hỏi", key="q", label_visibility="collapsed",
+        c1.text_input("Câu hỏi", key="q", label_visibility="collapsed", max_chars=300,
                       placeholder="Thông tin bạn cần, ví dụ: làm giấy khai sinh cho con cần giấy tờ gì?")
         submitted = c2.form_submit_button("Tra cứu", icon=":material/search:", width="stretch")
     with st.container(key="quick"):
@@ -211,7 +211,7 @@ def answer_card(engine, r: dict) -> None:
     if r["refused"]:
         msgs = [AnswerEngine.refusal_text(p) for p in r["parts"]] or [r["answer"].split("\n")[0]]
         body = "".join(f"<p>{html.escape(m)}</p>" for m in dict.fromkeys(msgs))
-        label = "Ngoài phạm vi hộ tịch" if r.get("reason") == "out_of_scope" else "Chưa đủ căn cứ để trả lời"
+        label = "Ngoài phạm vi hộ tịch" if r.get("reason") in ("out_of_scope", "no_overlap") else "Chưa đủ căn cứ để trả lời"
         st.markdown(f"""
 <div class="refuse-card">
   <div class="label">⚖ {label}</div>
@@ -488,6 +488,7 @@ def tab_stats(engine: AnswerEngine) -> None:
     with right:
         st.markdown("**Lý do từ chối**")
         reasons = {"out_of_scope": "Câu hỏi thuộc lĩnh vực khác (lọc trước truy hồi)",
+                   "no_overlap": "Không có từ nào trong kho (tiếng nước ngoài, gõ bừa)",
                    "low_score": "Điểm thấp hơn ngưỡng τ (có thể ngoài phạm vi)",
                    "no_evidence": "Văn bản không có con số câu hỏi đòi"}
         rr = df[df["refused"] == 1]["reason"].map(reasons).value_counts()

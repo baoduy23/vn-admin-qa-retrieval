@@ -9,6 +9,9 @@
 Các bước:
   0. Câu hỏi về lĩnh vực khác (hộ chiếu, đất đai, thuế...) mà không nhắc việc hộ tịch nào → từ chối ngay
      (out_of_scope, intent.out_of_scope_topic), không truy hồi.
+     Câu không có âm tiết nào xuất hiện trong kho ("hello world", gõ bừa) → từ chối ngay (no_overlap).
+     Cần lớp này vì điểm rerank đã minmax trong tập ứng viên: hybrid và PhoRanker cùng chọn một đoạn
+     là top-1 được 1.0, vượt τ dù đoạn đó chẳng liên quan gì.
   1. Tách câu nhiều ý (intent.split_multi_intent), mỗi ý truy hồi riêng bằng retrieve() của TV3.
   2. Mỗi ý: điểm top-1 < τ → từ chối (low_score). τ chọn trên validation (evaluate_answer.py).
   3. Câu hỏi đòi con số (tiền, phạt, tuổi, thời hạn) mà top evidence_k đoạn không có con số đó
@@ -25,11 +28,13 @@ from functools import lru_cache
 import yaml
 
 from src.answer.intent import (TYPE_LABEL, chunk_topic, evidence_pattern, expected_type, find_procedures, has_evidence,
-                               is_underspecified, out_of_scope_topic, split_multi_intent)
+                               is_underspecified, out_of_scope_topic, split_multi_intent,
+                               topic_head)
 from src.answer.line_scorer import load_line_scorer
 from src.answer.retriever import Retriever, load_answer_config, load_retriever
 from src.answer.template import best_quote, citation, format_answer, highlight_html
 from src.answer.text import IDF, content_syllables
+from src.retrieval.bm25 import tokenize
 from src.data.split import ROOT
 from src.retrieval.query import clean_query, strip_accents
 from src.retrieval.retrieve import load_chunks, load_config, load_spec
@@ -44,6 +49,8 @@ REFUSAL_TEXT = {
     "low_score": ("Hệ thống không tìm thấy quy định đủ liên quan trong kho văn bản hộ tịch để trả lời "
                   "câu hỏi này. Câu hỏi có thể nằm ngoài phạm vi kho (khai sinh, kết hôn, khai tử, "
                   "thay đổi, cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục)."),
+    "no_overlap": ("Câu hỏi không có từ nào xuất hiện trong kho văn bản hộ tịch (có thể là tiếng nước ngoài "
+                   "hoặc gõ nhầm), nên hệ thống không trả lời."),
     "no_evidence": ("Các điều khoản tìm được không nêu {label} mà câu hỏi đòi hỏi. Hệ thống không đưa "
                     "ra con số khi không có căn cứ trong văn bản."),
 }
@@ -81,6 +88,8 @@ class AnswerEngine:
         self.threshold = threshold if threshold is not None else load_thresholds().get(self.retriever.name, 0.0)
         self.evidence_check = load_evidence_check(self.retriever.name, self.cfg.get("evidence_check", True))
         self.idf = IDF([l for c in self.chunks for l in c.get("display_text", "").split("\n")])
+        # âm tiết bỏ dấu của cả kho: câu gõ có dấu hay không dấu đều so được
+        self.vocab = {t for c in self.chunks for t in tokenize(strip_accents(c.get("chunk_text") or c.get("display_text", "")))}
         self._similar = similar
         self.warning = self.retriever.warning
         if line_scorer is None and retriever is None and not self.warning:
@@ -129,10 +138,26 @@ class AnswerEngine:
         part.update(chunk_id=chunk["chunk_id"], quote_lines=quote, answer=format_answer(chunk, quote))
         return part
 
+    def in_corpus(self, question: str) -> bool:
+        """Có ít nhất một âm tiết của câu hỏi xuất hiện trong kho (so bản bỏ dấu), tức BM25 top-1 > 0."""
+        return any(t in self.vocab for t in tokenize(strip_accents(question)))
+
+    def out_of_scope_part(self, question: str, head: str = "") -> dict | None:
+        """Lọc phạm vi cho từng ý của câu nhiều ý: "Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?" qua được
+        bước lọc cả câu (có "khai tử") nhưng ý 2 hỏi đất đai, nên từ chối riêng ý đó thay vì trích luật hộ tịch.
+        Chỉ xét chữ của chính ý đó, bỏ phần chủ đề (head) split_multi_intent ghép từ vế đầu: "Chồng tôi quốc tịch
+        Úc, nộp gì" có "quốc tịch" là do ghép, ý thật là "nộp gì" (hồ sơ khai tử)."""
+        own = question[len(head):].strip() if head and question.startswith(head + " ") else question
+        topic = out_of_scope_topic(own) if self.cfg.get("out_of_scope_filter", True) else None
+        if not topic:
+            return None
+        return dict(question=question, hits=[], top_score=0.0, refused=True, reason="out_of_scope",
+                    answer="", quote_lines=[], chunk_id=None, expected_type=None, out_of_scope_topic=topic)
+
     @staticmethod
     def refusal_text(part: dict) -> str:
         label = TYPE_LABEL.get(part.get("expected_type") or "", "thông tin")
-        return REFUSAL_TEXT[part["reason"]].format(label=label)
+        return REFUSAL_TEXT[part["reason"]].format(label=label, topic=part.get("out_of_scope_topic") or "")
 
     # ------------------------------------------------------------ cả câu
     def answer(self, question: str, k: int | None = None) -> dict:
@@ -149,10 +174,16 @@ class AnswerEngine:
                         answer=f'{REFUSAL_TEXT["out_of_scope"].format(topic=topic)}\n{REFUSAL_HINT}',
                         parts=[], sources=[], similar_questions=[], underspecified=False, notes=[],
                         scores={"top1": 0.0, "threshold": self.threshold}, out_of_scope_topic=topic)
+        if self.cfg.get("no_overlap_filter", True) and not self.in_corpus(q):
+            return dict(base, refused=True, reason="no_overlap", answer=f'{REFUSAL_TEXT["no_overlap"]}\n{REFUSAL_HINT}',
+                        parts=[], sources=[], similar_questions=[], underspecified=False, notes=[],
+                        scores={"top1": 0.0, "threshold": self.threshold})
 
         split = self.cfg.get("multi_intent", {}).get("split", True)
         sub_questions = split_multi_intent(q) if split else [q]
-        parts = [self.answer_part(s, k) for s in sub_questions]
+        head = topic_head(sub_questions[0]) if len(sub_questions) > 1 else ""
+        parts = [self.out_of_scope_part(s, head if i else "") or self.answer_part(s, k)
+                 for i, s in enumerate(sub_questions)]
         refused = all(p["refused"] for p in parts)
 
         # câu trả lời: một ý → 1 đoạn; nhiều ý → đánh số từng ý

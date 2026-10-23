@@ -17,6 +17,10 @@ evidence_check: true  # tắt để so sánh: chỉ dùng ngưỡng τ
 # Từ chối ngay câu về lĩnh vực khác (hộ chiếu, căn cước, đất đai, thuế, bằng lái, quốc tịch...) mà không nhắc
 # việc hộ tịch nào, trước cả bước truy hồi (src/answer/intent.py, out_of_scope_topic). false = chỉ dùng τ như cũ.
 out_of_scope_filter: true
+# Từ chối câu không có âm tiết nào xuất hiện trong kho ("hello world", gõ bừa), trước bước truy hồi.
+# Cần vì điểm rerank là minmax trong tập ứng viên, câu vô nghĩa vẫn có thể được top-1 = 1.0 > τ.
+# 220 câu hiện có không câu nào bị lớp này chặn. false = như cũ.
+no_overlap_filter: true
 
 quote:
   # cách chọn khoản / điểm để trích trong đoạn top-1:
