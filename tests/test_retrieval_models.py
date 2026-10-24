@@ -101,10 +101,10 @@ def test_rerank_run_scores_each_pair_once():
         def __init__(self):
             self.calls = []
 
-        def rerank(self, question, candidates, blend=0.0, ce_scores=None):
+        def rerank(self, question, candidates, blend=0.0, ce_scores=None, ce_norm=None):
             return sorted(zip([c for c, _ in candidates], ce_scores), key=lambda x: -x[1])
 
-        def scores(self, question, chunk_ids):
+        def scores(self, question, chunk_ids, restore=None):
             self.calls.append(list(chunk_ids))
             return [float(len(c)) for c in chunk_ids]     # chunk id dài hơn = điểm cao hơn
 
@@ -113,6 +113,82 @@ def test_rerank_run_scores_each_pair_once():
     big = rerank_run(rr, {"Q1": [("a", 1.0), ("bb", 0.5), ("ccc", 0.1)]}, qs, 0.0, cache)
     assert rr.calls == [["a", "bb"], ["ccc"]]            # lần 2 chỉ chấm chunk mới
     assert [c for c, _ in small["Q1"]] == ["bb", "a"] and big["Q1"][0][0] == "ccc"
+
+
+# ---------- điểm cross-encoder: minmax / raw ----------
+def _fake_reranker(scores_by_chunk, activation="Sigmoid", **cfg):
+    """Reranker thật nhưng model giả: không nạp sentence-transformers, chỉ kiểm phần trộn điểm."""
+    from src.retrieval.rerank import Reranker
+
+    class Act:
+        pass
+    Act.__name__ = activation
+
+    class Model:
+        activation_fn = Act()
+
+        def predict(self, pairs, **kw):
+            return [scores_by_chunk[t] for _, t in pairs]
+
+    rr = Reranker.__new__(Reranker)
+    rr.cfg, rr.model, rr.batch_size, rr.field = cfg, Model(), 16, "chunk_text"
+    rr.chunks = {c: {"chunk_text": c} for c in scores_by_chunk}
+    return rr
+
+
+def test_ce_norm_raw_keeps_low_scores_low():
+    # câu lạc đề: cross-encoder cho mọi ứng viên rất thấp
+    rr = _fake_reranker({"a": 0.03, "b": 0.01})
+    cands = [("a", 0.9), ("b", 0.2)]
+    mm = rr.rerank("x", cands, blend=0.4)                       # mặc định minmax: top-1 vẫn = 1.0
+    raw = rr.rerank("x", cands, blend=0.4, ce_norm="raw")
+    assert mm[0] == ("a", pytest.approx(1.0))
+    assert raw[0][0] == "a" and raw[0][1] == pytest.approx(0.4 * 1.0 + 0.6 * 0.03)
+    assert _fake_reranker({"a": 0.03}, ce_norm="raw").rerank("x", [("a", 1.0)])[0][1] == pytest.approx(0.03)
+    with pytest.raises(ValueError):
+        rr.rerank("x", cands, ce_norm="abc")
+
+
+def test_ce_norm_raw_applies_sigmoid_to_logits():
+    rr = _fake_reranker({"a": 0.0, "b": -800.0}, activation="Identity")   # model trả logit
+    out = dict(rr.rerank("x", [("a", 1.0), ("b", 1.0)], ce_norm="raw"))
+    assert out["a"] == pytest.approx(0.5) and 0 <= out["b"] < 1e-6
+
+
+def test_reranker_restores_unaccented_question():
+    seen = []
+    rr = _fake_reranker({"a": 0.5}, restore_diacritics=True)
+    rr.model.predict = lambda pairs, **kw: seen.extend(q for q, _ in pairs) or [0.5] * len(pairs)
+    rr.scores("dang ky khai sinh", ["a"])
+    rr.scores("dang ky khai sinh", ["a"], restore=False)
+    assert seen == ["đăng ký khai sinh", "dang ky khai sinh"]
+
+
+# ---------- khôi phục dấu ----------
+def test_restorer_prefers_longer_ngrams_and_keeps_case():
+    from src.retrieval.restore import Restorer
+    r = Restorer(["Người phạm tội.", "Tội phạm.", "Tôi muốn đăng ký khai sinh."])
+    assert r.restore("toi") == "tội"                             # một mình: dạng gặp nhiều nhất trong bảng
+    assert r.restore("Toi muon dang ky") == "Tôi muốn đăng ký"   # có ngữ cảnh: cụm 2–3 âm tiết thắng
+    assert r.restore("UBND xa, dang ky?") == "UBND xa, đăng ký?"  # chữ lạ giữ nguyên, giữ dấu câu
+
+
+def test_restore_query_only_for_unaccented():
+    from src.retrieval.restore import restore_query
+    assert restore_query("dang ky khai sinh can giay to gi") == "đăng ký khai sinh cần giấy tờ gì"
+    assert restore_query("khai sinh ko can giay j") == "khai sinh không cần giấy gì"
+    assert restore_query("Đăng ký ket hon") == "Đăng ký ket hon"          # đã có dấu: chỉ mở rộng viết tắt
+    assert restore_query("UBND tp Thủ Đức") == "UBND tp Thủ Đức"          # "tp" không bị đổi thành "tư pháp"
+    assert restore_query("   ") == ""
+
+
+def test_restorer_uses_train_questions_only():
+    from src.retrieval.restore import _train_questions
+    split_of = _split_of()
+    with open(ROOT / "data/labels/questions.csv", encoding="utf-8-sig") as f:
+        q_split = {r["question"]: split_of.get(r["question_group_id"]) for r in csv.DictReader(f)}
+    qs = _train_questions()
+    assert qs and all(q_split[q] == "train" for q in qs)
 
 
 def test_invalid_pipeline_raises(chunks):

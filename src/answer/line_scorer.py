@@ -42,10 +42,10 @@ def load_line_scorer(cfg: dict) -> LineScorer | None:
         model = _cross_encoder(m)
     except Exception:                              # ImportError, OSError khi tải model, ...
         return None
-    seg = m.get("segment", False)
+    seg, restore = m.get("segment", False), m.get("restore_diacritics", False)
 
     def score(question: str, chunk: dict, lines: list[str]) -> list[float]:
-        q = model_input(question, seg)
+        q = model_input(question, seg, restore=restore)
         head = chunk.get("dieu_title") or ""
         texts = [f"{head} {line}".strip() for line in lines]   # kèm tên Điều để dòng ngắn ("a) ...") có ngữ cảnh
         if seg:

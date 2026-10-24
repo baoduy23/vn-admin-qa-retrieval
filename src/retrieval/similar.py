@@ -62,7 +62,8 @@ class SimilarIndex:
 
     def _encode(self, texts: list[str]):
         # câu hỏi so với câu hỏi: cả hai bên dùng query_prefix
-        xs = [model_input(t, self.mcfg.get("segment", False), self.mcfg.get("query_prefix", "")) for t in texts]
+        xs = [model_input(t, self.mcfg.get("segment", False), self.mcfg.get("query_prefix", ""),
+                          self.mcfg.get("restore_diacritics", False)) for t in texts]
         return self.model.encode(xs, batch_size=self.batch_size, normalize_embeddings=True,
                                  convert_to_numpy=True, show_progress_bar=False)
 

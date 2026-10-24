@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import html
+import inspect
 import sys
 import time
 from pathlib import Path
@@ -30,6 +31,10 @@ from src.answer.intent import TYPE_LABEL, chunk_topic, find_procedures  # noqa: 
 from src.app import db  # noqa: E402
 from src.app import images  # noqa: E402
 from src.app.style import css  # noqa: E402
+
+TABS = [":material/home: Hỏi đáp", "Lịch sử truy vấn", "Thống kê", "Giới thiệu hệ thống"]
+# st.tabs(on_change=...) chỉ có ở Streamlit mới; bản cũ hơn thì vẫn chạy, chỉ là vẽ cả 4 tab như trước.
+LAZY_TABS = "on_change" in inspect.signature(st.tabs).parameters
 
 QUICK = [
     ("Đăng ký khai sinh", "Đăng ký khai sinh cần những giấy tờ gì?"),
@@ -95,6 +100,13 @@ def ask(text: str) -> None:
     """Callback của các nút gợi ý: điền câu vào ô hỏi rồi chạy luôn."""
     st.session_state.q = text
     st.session_state.pending = True
+
+
+def ask_again(text: str) -> None:
+    """Nút "Hỏi lại" ở tab Lịch sử: như ask(), rồi chuyển luôn về tab Hỏi đáp để thấy kết quả."""
+    ask(text)
+    if LAZY_TABS:
+        st.session_state.nav = TABS[0]
 
 
 # ======================================================================= khung trang
@@ -211,7 +223,8 @@ def answer_card(engine, r: dict) -> None:
     if r["refused"]:
         msgs = [AnswerEngine.refusal_text(p) for p in r["parts"]] or [r["answer"].split("\n")[0]]
         body = "".join(f"<p>{html.escape(m)}</p>" for m in dict.fromkeys(msgs))
-        label = "Ngoài phạm vi hộ tịch" if r.get("reason") in ("out_of_scope", "no_overlap") else "Chưa đủ căn cứ để trả lời"
+        label = {"out_of_scope": "Ngoài phạm vi hộ tịch", "no_overlap": "Ngoài phạm vi hộ tịch",
+                 "empty": "Chưa có nội dung câu hỏi"}.get(r.get("reason"), "Chưa đủ căn cứ để trả lời")
         st.markdown(f"""
 <div class="refuse-card">
   <div class="label">⚖ {label}</div>
@@ -433,7 +446,7 @@ def tab_history(engine: AnswerEngine) -> None:
     pick = c1.selectbox("Hỏi lại một câu", list(dict.fromkeys(df["question"])), index=None,
                         placeholder="Chọn câu hỏi trong lịch sử…")
     c2.button("Hỏi lại", icon=":material/replay:", disabled=pick is None, width="stretch",
-              on_click=ask, args=(pick,), help="Điền câu vào ô hỏi; mở tab Hỏi đáp để xem kết quả")
+              on_click=ask_again, args=(pick,), help="Điền câu vào ô hỏi rồi chuyển về tab Hỏi đáp")
     st.download_button("Tải lịch sử (CSV)", df.drop(columns=["rating"]).to_csv(index=False).encode("utf-8-sig"),
                        "lich_su_truy_van.csv", "text/csv", icon=":material/download:")
 
@@ -540,15 +553,14 @@ def tab_about(engine: AnswerEngine) -> None:
 def main() -> None:
     header()
     engine = get_engine()
-    tabs = st.tabs([":material/home: Hỏi đáp", "Lịch sử truy vấn", "Thống kê", "Giới thiệu hệ thống"])
-    with tabs[0]:
-        tab_home(engine)
-    with tabs[1]:
-        tab_history(engine)
-    with tabs[2]:
-        tab_stats(engine)
-    with tabs[3]:
-        tab_about(engine)
+    # Chỉ chạy tab đang mở: trước đây mỗi lần hỏi cả 4 tab đều chạy lại (đọc SQLite, vẽ biểu đồ thống kê) dù
+    # người dùng chỉ thấy 1 tab. key="nav" để nút "Hỏi lại" chuyển tab được (ask_again).
+    tabs = st.tabs(TABS, key="nav", on_change="rerun") if LAZY_TABS else st.tabs(TABS)
+    for tab, draw in zip(tabs, (tab_home, tab_history, tab_stats, tab_about)):
+        if getattr(tab, "open", None) is False:     # None: Streamlit cũ không biết tab nào đang mở, vẽ hết như cũ
+            continue
+        with tab:
+            draw(engine)
     footer(engine)
 
 

@@ -13,6 +13,9 @@ Các bước (pipeline):
   hybrid  gộp điểm BM25 + SBERT, minmax có trọng số hoặc RRF (src/retrieval/fusion.py)
   rerank  lấy top_n của first_stage (bm25 / dense / hybrid), cộng thêm tối đa extra_bm25 chunk đứng đầu
           BM25 mà bước đầu bỏ sót (rerank_candidates), rồi xếp lại tất cả bằng cross-encoder
+          (ce_norm: minmax / raw, xem rerank.py)
+Câu gõ không dấu: BM25 tìm trên chỉ mục bỏ dấu; bi-encoder và cross-encoder nhận câu đã khôi phục dấu
+nếu restore_diacritics = true trong mục dense / rerank (restore.py).
 Mọi câu hỏi đều qua clean_query (NFC + normalize_tone) trước khi tokenize hoặc encode (issue #7).
 
 TV4 ráp vào: trong configs/answer.yaml đổi
@@ -78,17 +81,18 @@ def candidate_runs(first_scores, bm25_scores, ids, questions, top_n, extra):
             for q in questions}
 
 
-def rerank_run(reranker, first_run, questions, blend, ce_cache):
-    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, chấm mỗi cặp một lần cho cả lưới."""
+def rerank_run(reranker, first_run, questions, blend, ce_cache, ce_norm=None, restore=None):
+    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, chấm mỗi cặp một lần cho cả lưới
+    (mỗi giá trị restore cần một cache riêng). ce_norm / restore = None: theo cấu hình của reranker."""
     out = {}
     for q in questions:
         cands = first_run[q["question_id"]]
         done = ce_cache.setdefault(q["question_id"], {})
         todo = [c for c, _ in cands if c not in done]
         if todo:
-            done.update(zip(todo, reranker.scores(q["question"], todo)))
+            done.update(zip(todo, reranker.scores(q["question"], todo, restore)))
         out[q["question_id"]] = reranker.rerank(q["question"], cands, blend=blend,
-                                                ce_scores=[done[c] for c, _ in cands])
+                                                ce_scores=[done[c] for c, _ in cands], ce_norm=ce_norm)
     return out
 
 

@@ -5,6 +5,7 @@ hoà → hòa) + bỏ ký tự ẩn, gộp khoảng trắng (normalize_line). M�
 (PhoBERT, bkai, PhoRanker) thì câu hỏi tách từ bằng đúng hàm segment() đã tạo cột text_seg.
 
 Người dùng hay gõ không dấu ("dang ky khai sinh"): has_diacritics() để chọn chỉ mục BM25 bỏ dấu.
+Với bi-encoder / cross-encoder: model_input(..., restore=True) khôi phục dấu trước (src/retrieval/restore.py).
 """
 from __future__ import annotations
 
@@ -30,10 +31,15 @@ def has_diacritics(text: str) -> bool:
     return strip_accents(text) != normalize_tone(text).lower()
 
 
-def model_input(question: str, segment: bool, prefix: str = "") -> str:
+def model_input(question: str, segment: bool, prefix: str = "", restore: bool = False) -> str:
     """Câu hỏi → chuỗi đưa vào bi-encoder / cross-encoder.
-    segment=True: tách từ bằng src.data.chunk.segment (cùng công cụ đã tạo text_seg)."""
-    q = clean_query(question)
+    segment=True: tách từ bằng src.data.chunk.segment (cùng công cụ đã tạo text_seg).
+    restore=True: mở rộng từ viết tắt, câu gõ không dấu thì khôi phục dấu (src/retrieval/restore.py)."""
+    if restore:
+        from src.retrieval.restore import restore_query    # import muộn: dựng bảng n-gram từ kho
+        q = restore_query(question)
+    else:
+        q = clean_query(question)
     if segment:
         from src.data.chunk import segment as seg       # import muộn: underthesea nạp lâu
         q = seg(q)

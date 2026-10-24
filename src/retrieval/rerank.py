@@ -7,14 +7,20 @@ Model khai báo trong configs/retrieval.yaml (rerankers), cùng các khóa như 
 (name, segment, max_seq_length). PhoBERT phân loại cặp đã fine-tune bằng train_pairs.csv
 (src/retrieval/finetune.py --cross) cũng nạp ở đây, name = artifacts/finetuned/<tên>.
 
-blend: 0 = chỉ dùng điểm cross-encoder; > 0 = trộn với điểm bước đầu (đều min-max trên top_n),
+blend: 0 = chỉ dùng điểm cross-encoder; > 0 = trộn với điểm bước đầu (min-max trên top_n),
        final = blend * first' + (1 - blend) * ce'. Chọn trên validation.
+ce_norm: cách đưa điểm cross-encoder vào công thức trên (chọn trên validation, lưới rerank.ce_norm_grid):
+  minmax  ce' = min-max trong các ứng viên của câu đó. Chunk tốt nhất luôn được 1.0 kể cả khi không chunk
+          nào liên quan, nên điểm top-1 gần như câu nào cũng cao: ngưỡng từ chối τ chỉ là tương đối.
+  raw     ce' = xác suất liên quan model tự cho (sigmoid, 0..1), không chuẩn hóa theo câu. Câu lạc đề
+          thì mọi ứng viên đều thấp, top-1 thấp theo, nên τ trên điểm top-1 tách câu cần từ chối tốt hơn.
+restore_diacritics: true thì câu gõ không dấu được khôi phục dấu trước khi đưa vào model (restore.py).
 """
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 
-from src.retrieval.dense import pick_device
 from src.retrieval.fusion import minmax
 from src.retrieval.query import model_input
 
@@ -22,6 +28,7 @@ from src.retrieval.query import model_input
 @lru_cache(maxsize=4)
 def load_cross_encoder(name: str, max_length: int = 256, device: str = "auto"):
     from sentence_transformers import CrossEncoder              # import muộn: torch nạp lâu
+    from src.retrieval.dense import pick_device                 # import muộn: dense.py cần numpy
     return CrossEncoder(name, max_length=max_length, device=pick_device(device))
 
 
@@ -33,20 +40,36 @@ class Reranker:
         self.field = "text_seg" if mcfg.get("segment") else "chunk_text"
         self.model = load_cross_encoder(mcfg["name"], mcfg.get("max_seq_length", 256), device)
 
-    def scores(self, question: str, chunk_ids: list[str]) -> list[float]:
+    def scores(self, question: str, chunk_ids: list[str], restore: bool | None = None) -> list[float]:
+        """Điểm model.predict. restore=None: theo cfg; evaluate_models truyền True / False để thử cả hai."""
         if not chunk_ids:
             return []
-        q = model_input(question, self.cfg.get("segment", False))
+        restore = self.cfg.get("restore_diacritics", False) if restore is None else restore
+        q = model_input(question, self.cfg.get("segment", False), restore=restore)
         pairs = [(q, self.chunks[c][self.field]) for c in chunk_ids]
         out = self.model.predict(pairs, batch_size=self.batch_size, show_progress_bar=False)
         return [float(x) for x in out]
 
+    def probs(self, ce: list[float]) -> list[float]:
+        """Điểm thô → xác suất 0..1. sentence-transformers đã áp sigmoid cho model 1 nhãn (PhoRanker) thì giữ
+        nguyên; model trả logit (activation Identity) thì áp sigmoid ở đây, để blend luôn trộn hai thang 0..1."""
+        act = getattr(self.model, "activation_fn", None) or getattr(self.model, "default_activation_function", None)
+        if type(act).__name__ == "Sigmoid":
+            return list(ce)
+        return [1 / (1 + math.exp(-x)) if x >= 0 else math.exp(x) / (1 + math.exp(x)) for x in ce]
+
     def rerank(self, question: str, candidates: list[tuple[str, float]], blend: float = 0.0,
-               ce_scores: list[float] | None = None) -> list[tuple[str, float]]:
-        """candidates: [(chunk_id, điểm bước đầu)] đã sắp. ce_scores: truyền vào nếu đã tính (lưới blend)."""
+               ce_scores: list[float] | None = None, ce_norm: str | None = None) -> list[tuple[str, float]]:
+        """candidates: [(chunk_id, điểm bước đầu)] đã sắp. ce_scores: truyền vào nếu đã tính (lưới blend).
+        ce_norm=None: theo cfg (mặc định minmax, như trước khi có công tắc)."""
         ids = [c for c, _ in candidates]
         ce = ce_scores if ce_scores is not None else self.scores(question, ids)
+        ce_norm = ce_norm or self.cfg.get("ce_norm", "minmax")
+        if ce_norm == "raw":
+            ce = self.probs(ce)
+        elif ce_norm != "minmax":
+            raise ValueError(f"ce_norm không hợp lệ: {ce_norm}")
         if blend > 0:
             first = minmax([s for _, s in candidates])
-            ce = [blend * f + (1 - blend) * c for f, c in zip(first, minmax(ce))]
+            ce = [blend * f + (1 - blend) * c for f, c in zip(first, ce if ce_norm == "raw" else minmax(ce))]
         return sorted(zip(ids, ce), key=lambda x: -x[1])

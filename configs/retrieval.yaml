@@ -8,6 +8,12 @@ bm25: {k1: 1.5, b: 0.9}      # BM25 âm tiết, tham số tốt nhất trên val
 fallback:
   pipeline: bm25
 
+# Câu gõ không dấu: khôi phục dấu trước khi đưa vào bi-encoder / cross-encoder (src/retrieval/restore.py).
+# BM25 không đổi (đã tìm trên chỉ mục bỏ dấu). evaluate_models thử cả hai giá trị và chọn trên validation;
+# chỉ để [false] là tắt hẳn.
+query:
+  restore_diacritics_grid: [false, true]
+
 # segment: true = model học trên văn bản đã tách từ (PhoBERT) → chunk dùng text_seg, câu hỏi qua segment()
 # enabled: false = bỏ qua khi đánh giá (model nặng, hoặc tải không được)
 dense_models:
@@ -46,6 +52,9 @@ rerank:
   # Gộp thêm ứng viên: chunk trong top-N của BM25 mà bước đầu bỏ sót cũng được cross-encoder chấm
   # (0 = như cũ). Nhắm vào câu gõ không dấu: SBERT trượt, BM25 bỏ dấu bắt được nhưng hybrid đẩy văng.
   extra_bm25_grid: [0, 5, 10]
+  # Điểm cross-encoder đưa vào công thức blend (src/retrieval/rerank.py): minmax trong từng câu (cách cũ, top-1
+  # gần như luôn cao nên τ chỉ là tương đối) hay raw = xác suất model cho (câu lạc đề thì top-1 thấp thật).
+  ce_norm_grid: [minmax, raw]
   models:
     - name: itdainb/PhoRanker                               # cross-encoder tiếng Việt, PhoBERT-base, đầu vào tách từ
       segment: true
