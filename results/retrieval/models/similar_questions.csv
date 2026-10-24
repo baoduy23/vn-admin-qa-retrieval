@@ -1,6 +1,7 @@
 split,min_score,n_answerable,coverage,precision_at_1,f1,shown_unanswerable
-validation,0.5,36,0.8056,0.3448,0.4829,0.4
-validation,0.6,36,0.3889,0.4286,0.4078,0.2
-validation,0.7,36,0.1944,0.7143,0.3057,0.0
-validation,0.8,36,0.0556,1.0,0.1053,0.0
-validation,0.9,36,0.0,0.0,0.0,0.0
+validation,0.5,48,1.0,0.2917,0.4516,1.0
+validation,0.6,48,1.0,0.2917,0.4516,1.0
+validation,0.7,48,1.0,0.2917,0.4516,1.0
+validation,0.8,48,1.0,0.2917,0.4516,1.0
+validation,0.9,48,0.7083,0.3824,0.4966,0.5556
+test,0.9,89,0.7865,0.2143,0.3368,0.3333

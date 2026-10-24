@@ -54,7 +54,7 @@ rerank:
   extra_bm25_grid: [0, 5, 10]
   # Điểm cross-encoder đưa vào công thức blend (src/retrieval/rerank.py): minmax trong từng câu (cách cũ, top-1
   # gần như luôn cao nên τ chỉ là tương đối) hay raw = xác suất model cho (câu lạc đề thì top-1 thấp thật).
-  ce_norm_grid: [minmax, raw]
+  ce_norm_grid: [raw]   # chốt raw trên validation 24/10: từ chối đúng 1.00 vs 0.22 minmax, NDCG kém 0.011
   models:
     - name: itdainb/PhoRanker                               # cross-encoder tiếng Việt, PhoBERT-base, đầu vào tách từ
       segment: true
