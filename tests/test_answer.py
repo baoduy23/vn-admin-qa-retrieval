@@ -109,6 +109,8 @@ def test_refuse_low_score_and_no_evidence():
     r = fake_engine([0.9, 0.8]).answer("Lệ phí khai sinh là bao nhiêu tiền?")
     assert r["refused"] and r["reason"] == "no_evidence"
     assert fake_engine([0.9, 0.8]).answer("   ")["reason"] == "empty"
+    for junk in ("😀😀", "??? !!!", "___"):                     # không có chữ hay số: không truy hồi
+        assert fake_engine([0.9, 0.8]).answer(junk)["reason"] == "empty"
 
 
 def test_multi_intent_answers_each_part():

@@ -2,10 +2,12 @@
 
 Quy trình (khóa test, giống src/retrieval/evaluate.py):
   1. Trên validation:
-     a. dense: thử từng bi-encoder trong configs/retrieval.yaml, giữ model NDCG@10 cao nhất (hòa: MRR)
+     a. dense: thử từng bi-encoder × restore_diacritics (khôi phục dấu câu không dấu) trong configs/retrieval.yaml,
+        giữ bộ NDCG@10 cao nhất (hòa: MRR, rồi từ chối đúng nhiều hơn, rồi từ chối nhầm ít hơn)
      b. hybrid: BM25 + bi-encoder tốt nhất, lưới fusion (minmax / rrf) × alpha
      c. rerank: bước đầu = bước có Recall@20 cao nhất trong bm25 / dense / hybrid; thử từng
-        cross-encoder × extra_bm25 × blend trên top_n = 20 (+ tối đa extra_bm25 chunk của BM25)
+        cross-encoder × restore_diacritics × extra_bm25 × blend × ce_norm (minmax / raw) trên top_n = 20
+        (+ tối đa extra_bm25 chunk của BM25)
      d. pipeline cuối = bước NDCG@10 cao nhất; ngưỡng từ chối (điểm top-1) của mỗi bước chọn như TV1
      e. câu hỏi tương tự: chọn min_score trên validation (bỏ nhóm của chính câu hỏi)
      → ghi configs/retrieval_selected.yaml (retrieve() và similar_questions() đọc file này)
@@ -16,8 +18,8 @@ Chạy từ gốc repo:  python -m src.retrieval.evaluate_models          (chỉ
 
 Đầu ra: results/retrieval/models/
   models_results.csv     R@k, MRR, NDCG@10, ngưỡng, từ chối đúng/nhầm của bm25 / dense / hybrid / rerank
-  models_by_type.csv     tách theo type câu hỏi
-  grid_validation.csv    mọi cấu hình đã thử trên validation (kể cả model tải lỗi)
+  models_by_type.csv     tách theo type câu hỏi, và theo câu gõ có dấu / không dấu (type = co_dau / khong_dau)
+  grid_validation.csv    mọi cấu hình đã thử trên validation (kể cả model tải lỗi), kèm ngưỡng và từ chối đúng/nhầm
   similar_questions.csv  độ chính xác gợi ý câu hỏi tương tự theo min_score
   runs/<bước>_<split>.csv  top-20 từng câu (cho phân tích lỗi của TV2)
   models_report.md
@@ -37,7 +39,7 @@ from src.data.split import ROOT, SPLITS
 from src.retrieval.evaluate import NO_QRELS, load_data, pick_threshold, refusal_rates, write_csv
 from src.retrieval.fusion import fuse, top_k
 from src.retrieval.metrics import evaluate
-from src.retrieval.query import clean_query
+from src.retrieval.query import clean_query, has_diacritics
 from src.retrieval.retrieve import SELECTED, STAGES, SparseIndex, candidate_runs, load_config, rerank_run
 
 OUT = ROOT / "results/retrieval/models"
@@ -62,7 +64,19 @@ def metrics(run, questions, qrels, ks):
 
 
 def key(m, select_by):
-    return (round(m[select_by], 6), round(m["mrr"], 6))
+    """Chọn theo NDCG@10, hòa thì MRR. Hòa nữa (vd ce_norm minmax / raw với blend 0 xếp hạng y hệt nhau)
+    thì chọn bộ từ chối đúng nhiều hơn, rồi từ chối nhầm ít hơn. Hòa hết thì giữ bộ thử trước (giá trị đầu
+    của mỗi lưới, tức cách làm cũ)."""
+    return (round(m[select_by], 6), round(m["mrr"], 6), round(m.get("correct_refusal", 0), 6),
+            -round(m.get("wrong_refusal", 0), 6))
+
+
+def scored(run, questions, qrels, ks, max_wrong):
+    """metrics() + ngưỡng từ chối trên điểm top-1 (chọn như TV1) và tỉ lệ từ chối đúng / nhầm ở ngưỡng đó."""
+    m = metrics(run, questions, qrels, ks)
+    t = pick_threshold(run, questions, max_wrong)
+    correct, wrong = refusal_rates(run, questions, t)
+    return dict(m, threshold=t, correct_refusal=correct, wrong_refusal=wrong)
 
 
 def run_from(scores_of, ids, questions, n=TOPN):
@@ -82,9 +96,10 @@ class ScoreCache:
 
 
 def grid_row(stage, model, params, m, ks, error=""):
+    ref = {c: round(m[c], 4) if c in m else "" for c in ("threshold", "correct_refusal", "wrong_refusal")}
     return dict(stage=stage, model=model, params=json.dumps(params, ensure_ascii=False),
                 **{f"R@{k}": round(m.get(f"recall@{k}", 0), 4) for k in ks},
-                MRR=round(m.get("mrr", 0), 4), **{"NDCG@10": round(m.get("ndcg@10", 0), 4)}, error=error)
+                MRR=round(m.get("mrr", 0), 4), **{"NDCG@10": round(m.get("ndcg@10", 0), 4)}, **ref, error=error)
 
 
 def short_error(e):
@@ -101,11 +116,14 @@ def select(cfg, chunks, val, qrels):
     ids = [c["chunk_id"] for c in chunks]
     run_cfg = cfg["runtime"]
     grid, runs, spec = [], {}, dict(bm25=cfg["bm25"])
+    score = lambda run: scored(run, val, qrels, ks, cfg["eval"]["max_wrong_refusal"])   # noqa: E731
+    restores = cfg.get("query", {}).get("restore_diacritics_grid", [False])
 
     sparse = ScoreCache(SparseIndex(chunks, **cfg["bm25"]).scores)
     runs["bm25"] = run_from(sparse, ids, val)
-    best = {"bm25": key(metrics(runs["bm25"], val, qrels, ks), sel)}
-    grid.append(grid_row("bm25", "bm25_syllable", cfg["bm25"], metrics(runs["bm25"], val, qrels, ks), ks))
+    mt = score(runs["bm25"])
+    best = {"bm25": key(mt, sel)}
+    grid.append(grid_row("bm25", "bm25_syllable", cfg["bm25"], mt, ks))
 
     # a. bi-encoder
     from src.retrieval.dense import DenseIndex
@@ -119,13 +137,15 @@ def select(cfg, chunks, val, qrels):
             traceback.print_exc()
             grid.append(grid_row("dense", m["name"], {}, {}, ks, error=short_error(e)))
             continue
-        sc = ScoreCache(idx.scores)
-        r = run_from(sc, ids, val)
-        mt = metrics(r, val, qrels, ks)
-        grid.append(grid_row("dense", m["name"], {}, mt, ks))
-        print(f"dense {m['name']}: NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f}")
-        if dense_best is None or key(mt, sel) > dense_best[0]:
-            dense_best, dense_scores, runs["dense"] = (key(mt, sel), model_cfg(m)), sc, r
+        for restore in restores:                  # mã hóa kho một lần, chỉ câu hỏi đổi theo restore
+            sc = ScoreCache(lambda text, idx=idx, restore=restore: idx.scores(text, restore))
+            r = run_from(sc, ids, val)
+            mt = score(r)
+            grid.append(grid_row("dense", m["name"], dict(restore_diacritics=restore), mt, ks))
+            print(f"dense {m['name']} restore {restore}: NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f}")
+            if dense_best is None or key(mt, sel) > dense_best[0]:
+                dense_best, dense_scores, runs["dense"] = (key(mt, sel),
+                                                           dict(model_cfg(m), restore_diacritics=restore)), sc, r
     if dense_best is None:
         raise SystemExit("Không nạp được bi-encoder nào: xem cột error trong grid_validation.csv")
     best["dense"], spec["dense"] = dense_best
@@ -137,7 +157,7 @@ def select(cfg, chunks, val, qrels):
             params = dict(fusion=method, alpha=a, rrf_k=cfg["hybrid"]["rrf_k"])
             r = run_from(lambda q: fuse([dense_scores(q), sparse(q)], [a, 1 - a], method, params["rrf_k"]),
                          ids, val)
-            mt = metrics(r, val, qrels, ks)
+            mt = score(r)
             grid.append(grid_row("hybrid", spec["dense"]["name"], params, mt, ks))
             if hb is None or key(mt, sel) > hb[0]:
                 hb, runs["hybrid"] = (key(mt, sel), params), r
@@ -167,18 +187,23 @@ def select(cfg, chunks, val, qrels):
             traceback.print_exc()
             grid.append(grid_row("rerank", m["name"], {}, {}, ks, error=short_error(e)))
             continue
-        ce_cache = {}
-        for extra, pool in pools.items():
-            for blend in cfg["rerank"]["blend_grid"]:
-                r = rerank_run(rr, pool, val, blend, ce_cache)
-                mt = metrics(r, val, qrels, ks)
-                params = dict(first_stage=first, top_n=top_n, extra_bm25=extra, blend=blend)
-                grid.append(grid_row("rerank", m["name"], params, mt, ks))
-                print(f"rerank {m['name']} extra_bm25 {extra} blend {blend}: "
-                      f"NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f} R@20 {mt['recall@20']:.3f}")
-                if rb is None or key(mt, sel) > rb[0]:
-                    rb, runs["rerank"] = (key(mt, sel), dict(model_cfg(m), top_n=top_n, extra_bm25=extra,
-                                                             blend=blend)), r
+        for restore in restores:
+            ce_cache = {}                         # điểm cross-encoder đổi theo restore, nên mỗi giá trị một cache
+            for extra, pool in pools.items():
+                for blend in cfg["rerank"]["blend_grid"]:
+                    for ce_norm in cfg["rerank"].get("ce_norm_grid", ["minmax"]):
+                        r = rerank_run(rr, pool, val, blend, ce_cache, ce_norm, restore)
+                        mt = score(r)
+                        params = dict(first_stage=first, top_n=top_n, extra_bm25=extra, blend=blend,
+                                      ce_norm=ce_norm, restore_diacritics=restore)
+                        grid.append(grid_row("rerank", m["name"], params, mt, ks))
+                        print(f"rerank {m['name']} restore {restore} extra_bm25 {extra} blend {blend} {ce_norm}: "
+                              f"NDCG@10 {mt['ndcg@10']:.3f} MRR {mt['mrr']:.3f} R@20 {mt['recall@20']:.3f} "
+                              f"từ chối đúng {mt['correct_refusal']:.2f} nhầm {mt['wrong_refusal']:.2f}")
+                        if rb is None or key(mt, sel) > rb[0]:
+                            rb, runs["rerank"] = (key(mt, sel), dict(
+                                model_cfg(m), top_n=top_n, extra_bm25=extra, blend=blend, ce_norm=ce_norm,
+                                restore_diacritics=restore)), r
     stages = ["bm25", "dense", "hybrid"]
     if rb is not None:
         best["rerank"], spec["rerank"] = rb
@@ -268,13 +293,15 @@ def stage_name(spec, s):
     if s == "bm25":
         return f"BM25 âm tiết (k1 {spec['bm25']['k1']}, b {spec['bm25']['b']})"
     if s == "dense":
-        return f"SBERT {spec['dense']['name']}"
+        return f"SBERT {spec['dense']['name']}" + (" (khôi phục dấu)" if spec["dense"].get("restore_diacritics") else "")
     if s == "hybrid":
         h = spec["hybrid"]
         return f"Hybrid BM25 + SBERT ({h['fusion']}, alpha {h['alpha']})"
     r = spec["rerank"]
     extra = f" + tối đa {r['extra_bm25']} chunk BM25" if r.get("extra_bm25") else ""
-    return f"Rerank {r['name']} trên top-{r['top_n']} {spec['first_stage']}{extra} (blend {r['blend']})"
+    restore = ", khôi phục dấu" if r.get("restore_diacritics") else ""
+    return (f"Rerank {r['name']} trên top-{r['top_n']} {spec['first_stage']}{extra} "
+            f"(blend {r['blend']}, điểm CE {r.get('ce_norm', 'minmax')}{restore})")
 
 
 def by_type(run, questions, qrels, ks):
@@ -284,6 +311,50 @@ def by_type(run, questions, qrels, ks):
         m = metrics(run, qs, qrels, ks)
         rows.append(dict(type=t, n=len(qs), **{k: round(v, 4) for k, v in m.items() if k != "n_questions"}))
     return rows
+
+
+def by_accent(run, questions, qrels, ks):
+    """Câu gõ có dấu / không dấu: để thấy riêng tác dụng của khôi phục dấu."""
+    rows = []
+    for t, want in (("co_dau", True), ("khong_dau", False)):
+        qs = [q for q in questions if q["type"] not in NO_QRELS and has_diacritics(q["question"]) == want]
+        if qs:
+            m = metrics(run, qs, qrels, ks)
+            rows.append(dict(type=t, n=len(qs), **{k: round(v, 4) for k, v in m.items() if k != "n_questions"}))
+    return rows
+
+
+def switch_table(grid, spec, sel):
+    """Mỗi tổ hợp công tắc (restore_diacritics, ce_norm) của model đã chọn: bộ tham số tốt nhất trong lưới
+    validation. Đọc bảng này để biết bật / tắt công tắc nào làm số tăng, chứ không chỉ thấy bộ thắng."""
+    L = []
+    for stage, keys in (("dense", ("restore_diacritics",)), ("rerank", ("restore_diacritics", "ce_norm"))):
+        if stage not in spec:
+            continue
+        best = {}
+        for g in grid:
+            if g["stage"] != stage or g["error"] or g["model"] != spec[stage]["name"]:
+                continue
+            p = json.loads(g["params"])
+            m = {"ndcg@10": float(g["NDCG@10"]), "mrr": float(g["MRR"]),
+                 **{c: float(g[c]) for c in ("correct_refusal", "wrong_refusal") if g.get(c) not in ("", None)}}
+            combo = tuple(p.get(k) for k in keys)
+            if combo not in best or key(m, sel) > best[combo][0]:
+                best[combo] = (key(m, sel), g, p)
+        if not best:
+            continue
+        L += [f"**{stage}** ({spec[stage]['name']}):", "",
+              "| " + " | ".join(keys) + " | Tham số khác | NDCG@10 | MRR | R@20 | Ngưỡng | Từ chối đúng | Từ chối nhầm |",
+              "|" + "---|" * (len(keys) + 7)]
+        num = lambda v, nd: f"{float(v):.{nd}f}" if v not in ("", None) else ""     # noqa: E731
+        for combo, (_, g, p) in sorted(best.items(), key=lambda x: str(x[0])):
+            rest = {k: v for k, v in p.items() if k not in keys and k not in ("first_stage", "top_n")}
+            L.append("| " + " | ".join(str(c) for c in combo) + f" | {json.dumps(rest, ensure_ascii=False)} | "
+                     f"{float(g['NDCG@10']):.3f} | {float(g['MRR']):.3f} | {float(g['R@20']):.3f} | "
+                     f"{num(g.get('threshold'), 3)} | {num(g.get('correct_refusal'), 2)} | "
+                     f"{num(g.get('wrong_refusal'), 2)} |")
+        L.append("")
+    return L
 
 
 def save_run(run, name):
@@ -315,7 +386,8 @@ def report(results, types, grid, sim_rows, spec, ks, questions):
     n = {s: sum(q["split"] == s for q in questions) for s in SPLITS}
     L = ["# Kết quả mô hình truy hồi cải tiến (TV3)", "",
          "Sinh tự động bởi `python -m src.retrieval.evaluate_models`. Model và tham số chọn trên validation "
-         "(theo NDCG@10, hòa thì MRR); test chỉ chạy với bộ đã chốt trong `configs/retrieval_selected.yaml`.", "",
+         "(theo NDCG@10, hòa thì MRR, rồi từ chối đúng nhiều hơn); test chỉ chạy với bộ đã chốt trong "
+         "`configs/retrieval_selected.yaml`.", "",
          f"Số câu: train {n['train']}, validation {n['validation']}, test {n['test']}. R@k, MRR, NDCG tính trên "
          "câu có nhãn; từ chối đúng tính trên out_of_scope + unsupported, từ chối nhầm trên câu hợp lệ "
          "(ngưỡng trên điểm top-1, chọn trên validation như baseline).", "",
@@ -331,14 +403,20 @@ def report(results, types, grid, sim_rows, spec, ks, questions):
             L.append(f"| {r['stage']} | {r['model']} | " + " | ".join(f"{r[f'R@{k}']:.3f}" for k in ks)
                      + f" | {r['MRR']:.3f} | {r['NDCG@10']:.3f} | {r['threshold']:.3f} | "
                        f"{r['correct_refusal']:.2f} | {r['wrong_refusal']:.2f} |")
-        tlist = sorted({t["type"] for t in types if t["split"] == split})
-        L += ["", f"Theo type ({split}, MRR):", "", "| Bước | " + " | ".join(tlist) + " |",
+        accent = ["co_dau", "khong_dau"]                 # by_accent: để cuối bảng, tách khỏi các type câu hỏi
+        tlist = sorted({t["type"] for t in types if t["split"] == split} - set(accent)) + accent
+        L += ["", f"Theo type ({split}, MRR; co_dau / khong_dau = câu gõ có dấu / không dấu):", "", "| Bước | " + " | ".join(tlist) + " |",
               "|" + "---|" * (1 + len(tlist))]
         for s in ("bm25_raw", *STAGES):
             d = {t["type"]: f"{t['mrr']:.3f} (n={t['n']})" for t in types if t["split"] == split and t["stage"] == s}
             if d:
                 L.append(f"| {s} | " + " | ".join(d.get(t, "") for t in tlist) + " |")
         L.append("")
+    L += ["## Công tắc cải tiến (validation)", "",
+          "restore_diacritics: câu gõ không dấu được khôi phục dấu trước khi vào bi-encoder / cross-encoder. "
+          "ce_norm: điểm cross-encoder chuẩn hóa min-max trong từng câu (minmax) hay giữ xác suất model cho (raw). "
+          "Mỗi dòng là bộ tốt nhất của tổ hợp đó; ngưỡng và từ chối tính trên điểm top-1 như bảng trên.", ""]
+    L += switch_table(grid, spec, load_config()["eval"]["select_by"]) or ["- không có dữ liệu lưới", ""]
     L += ["## Lưới trên validation", "", "Xem `grid_validation.csv`. Model tải lỗi:", ""]
     errs = [g for g in grid if g["error"]]
     L += [f"- {g['model']}: {g['error']}" for g in errs] or ["- không có"]
@@ -389,7 +467,7 @@ def main(with_test=False):
                                 **{f"R@{k}": round(m[f"recall@{k}"], 4) for k in ks}, MRR=round(m["mrr"], 4),
                                 **{"NDCG@10": round(m["ndcg@10"], 4)}, threshold=round(thr[s], 4),
                                 correct_refusal=round(correct, 4), wrong_refusal=round(wrong, 4)))
-            types += [dict(stage=s, split=split, **r) for r in by_type(run, sq, qrels, ks)]
+            types += [dict(stage=s, split=split, **r) for r in by_type(run, sq, qrels, ks) + by_accent(run, sq, qrels, ks)]
             save_run(run, f"{s}_{split}")
 
     if with_test:

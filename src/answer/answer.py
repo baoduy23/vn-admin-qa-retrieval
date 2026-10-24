@@ -23,6 +23,7 @@ Cả câu chỉ bị từ chối khi MỌI ý đều bị từ chối.
 """
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 
 import yaml
@@ -43,7 +44,7 @@ SELECTED = ROOT / "configs/answer_selected.yaml"
 AUTHORITY_NOTE_CHUNK = "120.2025.ND-CP__PL1__K2"      # cấp huyện → cấp xã (chính quyền 2 cấp)
 
 REFUSAL_TEXT = {
-    "empty": "Bạn chưa nhập câu hỏi.",
+    "empty": "Bạn chưa nhập câu hỏi (câu không có chữ hay số nào).",
     "out_of_scope": ("Câu hỏi về {topic} nằm ngoài phạm vi kho văn bản hộ tịch (khai sinh, kết hôn, khai tử, "
                      "thay đổi, cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục), nên hệ thống không trả lời."),
     "low_score": ("Hệ thống không tìm thấy quy định đủ liên quan trong kho văn bản hộ tịch để trả lời "
@@ -165,7 +166,9 @@ class AnswerEngine:
         k = k or self.cfg.get("top_k", 5)
         q = clean_query(question).strip()
         base = dict(question=q, pipeline=self.retriever.name, threshold=self.threshold, warning=self.warning)
-        if not q:
+        # không có chữ cái hay chữ số nào (chỉ emoji, dấu câu, "___"): coi như chưa nhập câu hỏi, khỏi truy hồi.
+        # Trước đây câu kiểu này rơi xuống lớp no_overlap (báo "tiếng nước ngoài"), tắt lớp đó thì còn đi truy hồi.
+        if not re.search(r"[^\W_]", q):
             return dict(base, refused=True, reason="empty", answer=REFUSAL_TEXT["empty"], parts=[],
                         sources=[], similar_questions=[], underspecified=False, notes=[], scores={})
 

@@ -34,10 +34,11 @@ bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 | `query.py` | Chuẩn hóa câu hỏi trước khi tokenize hoặc encode (issue #7): `clean_query` (NFC + `normalize_tone` + khoảng trắng), `strip_accents`, `has_diacritics`; `model_input` tách từ bằng đúng `segment()` đã tạo `text_seg` cho model PhoBERT |
 | `dense.py` | SBERT bi-encoder: `DenseIndex(model_cfg, chunks).search(q, k)`, cosine; embedding kho lưu ở `artifacts/embeddings/` |
 | `fusion.py` | Hybrid: `fuse([dense, bm25], [alpha, 1 - alpha], method="minmax" \| "rrf")`, Python thuần |
-| `rerank.py` | Cross-encoder xếp lại top-20: `Reranker(model_cfg, chunks_by_id).rerank(q, candidates, blend)`. Ứng viên = top-20 bước đầu + tối đa `extra_bm25` chunk đầu BM25 bị bỏ sót (`retrieve.rerank_candidates`) |
+| `rerank.py` | Cross-encoder xếp lại top-20: `Reranker(model_cfg, chunks_by_id).rerank(q, candidates, blend)`. Ứng viên = top-20 bước đầu + tối đa `extra_bm25` chunk đầu BM25 bị bỏ sót (`retrieve.rerank_candidates`). `ce_norm`: điểm cross-encoder min-max trong từng câu (cũ) hay giữ xác suất model cho (`raw`, câu lạc đề thì top-1 thấp thật) |
+| `restore.py` | Khôi phục dấu cho câu gõ không dấu bằng bảng n-gram của kho + câu hỏi train, chỉ cho bi-encoder / cross-encoder (`restore_diacritics`). BM25 vẫn tìm trên chỉ mục bỏ dấu |
 | `retrieve.py` | **`retrieve(question, k=10)`** dùng chung: đọc `configs/retrieval_selected.yaml`; chưa có thì BM25 âm tiết. Câu gõ không dấu tìm BM25 trên bản bỏ dấu của kho |
 | `similar.py` | **`similar_questions(q, k=3)`**: câu hỏi tương tự trong train + validation (không lấy test), mỗi nhóm 1 câu, cosine bi-encoder (không có model thì Dice âm tiết) |
-| `evaluate_models.py` | Chọn model và tham số trên validation (bi-encoder, hybrid fusion × alpha, cross-encoder × extra_bm25 × blend, ngưỡng câu tương tự) → `configs/retrieval_selected.yaml`; `--test` chạy test 1 lần → `results/retrieval/models/` |
+| `evaluate_models.py` | Chọn model và tham số trên validation (bi-encoder × restore_diacritics, hybrid fusion × alpha, cross-encoder × restore_diacritics × extra_bm25 × blend × ce_norm, ngưỡng câu tương tự; bảng "Công tắc cải tiến" trong báo cáo so bật / tắt) → `configs/retrieval_selected.yaml`; `--test` chạy test 1 lần → `results/retrieval/models/` |
 | `finetune.py` | Nếu kịp: `--bi` fine-tune bi-encoder (MNRL + hard negative), `--cross` PhoBERT phân loại cặp, dữ liệu `train_pairs.csv` chỉ phần train → `artifacts/finetuned/` |
 
 Danh sách model ứng viên và lưới tham số ở `configs/retrieval.yaml`. Cài thêm: `pip install sentence-transformers torch`.

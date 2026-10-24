@@ -7,6 +7,7 @@ Mỗi model khai báo trong configs/retrieval.yaml (dense_models):
   query_prefix /  tiền tố model yêu cầu, vd multilingual-e5: "query: " / "passage: "
   passage_prefix
   max_seq_length  PhoBERT tối đa 256 token; chunk của kho tối đa 200 từ nên gần như không bị cắt
+  restore_diacritics  true: câu hỏi gõ không dấu được khôi phục dấu trước khi mã hóa (chọn trên validation)
 
 Embedding của kho lưu ở artifacts/embeddings/<model>__<hash>.npy (không commit). Hash tính trên
 tên model + toàn bộ văn bản đưa vào, nên đổi chunks.jsonl hay đổi model thì tự mã hóa lại.
@@ -74,13 +75,15 @@ class DenseIndex:
         np.save(path, emb)
         return emb
 
-    def query_vector(self, question: str) -> np.ndarray:
-        q = model_input(question, self.cfg.get("segment", False), self.cfg.get("query_prefix", ""))
+    def query_vector(self, question: str, restore: bool | None = None) -> np.ndarray:
+        """restore=None: theo cfg (restore_diacritics); evaluate_models truyền True / False để thử cả hai."""
+        restore = self.cfg.get("restore_diacritics", False) if restore is None else restore
+        q = model_input(question, self.cfg.get("segment", False), self.cfg.get("query_prefix", ""), restore)
         return self.encode([q])[0]
 
-    def scores(self, question: str) -> list[float]:
+    def scores(self, question: str, restore: bool | None = None) -> list[float]:
         """Cosine giữa câu hỏi và từng chunk, cùng thứ tự với self.ids."""
-        return (self.emb @ self.query_vector(question)).tolist()
+        return (self.emb @ self.query_vector(question, restore)).tolist()
 
     def search(self, question: str, k: int = 10) -> list[tuple[str, float]]:
         return top_k(self.ids, self.scores(question), k)
