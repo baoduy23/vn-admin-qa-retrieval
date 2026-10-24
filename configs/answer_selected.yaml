@@ -1,14 +1,14 @@
 # SINH TỰ ĐỘNG bởi python -m src.answer.evaluate_answer (chọn trên validation), không sửa tay.
-# 2026-10-23T00:17:51. answer() đọc file này; ngưỡng là điểm top-1 của từng loại pipeline.
+# 2026-10-25T06:18:35. answer() đọc file này; ngưỡng là điểm top-1 của từng loại pipeline.
 thresholds:
-  rerank: 0.869
+  rerank: 0.0513
   hybrid: 0.0
-  dense: 0.0
+  dense: 0.82085
   bm25: 0.0
 evidence_check:
   rerank: true
   hybrid: true
   dense: true
-  bm25: true
+  bm25: false
 selected_on: validation
 max_wrong_refusal: 0.1

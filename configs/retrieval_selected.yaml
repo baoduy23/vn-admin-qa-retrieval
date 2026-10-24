@@ -1,16 +1,19 @@
 # SINH TỰ ĐỘNG bởi python -m src.retrieval.evaluate_models (chọn trên validation), không sửa tay.
-# 2026-10-22T17:14:40. retrieve() và similar_questions() đọc file này.
-# NDCG@10 validation: {'bm25': 0.387, 'dense': 0.4717, 'hybrid': 0.5258, 'rerank': 0.5606}
+# 2026-10-25T05:43:30. retrieve() và similar_questions() đọc file này.
+# NDCG@10 validation: {'bm25': 0.4964, 'dense': 0.5817, 'hybrid': 0.5955, 'rerank': 0.6681}
 bm25:
   k1: 1.5
   b: 0.9
 dense:
-  name: bkai-foundation-models/vietnamese-bi-encoder
-  segment: true
-  max_seq_length: 256
+  name: intfloat/multilingual-e5-base
+  segment: false
+  query_prefix: 'query: '
+  passage_prefix: 'passage: '
+  max_seq_length: 512
+  restore_diacritics: true
 hybrid:
   fusion: minmax
-  alpha: 0.8
+  alpha: 0.9
   rrf_k: 60
 first_stage: hybrid
 rerank:
@@ -18,15 +21,17 @@ rerank:
   segment: true
   max_seq_length: 256
   top_n: 20
-  extra_bm25: 10
-  blend: 0.4
+  extra_bm25: 5
+  blend: 0.0
+  ce_norm: raw
+  restore_diacritics: true
 pipeline: rerank
 thresholds:
   bm25: 6.940212
-  dense: 0.209745
-  hybrid: 0.853039
-  rerank: 0.869035
+  dense: 0.831217
+  hybrid: 0.945629
+  rerank: 0.051329
 similar:
   dense: true
-  min_score: 0.7  # sửa tay: app ưu tiên gợi ý đúng (val 220 câu: P@1 0.71, không hiện cho câu không trả lời được)
+  min_score: 0.9
   k: 3

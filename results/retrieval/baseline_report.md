@@ -2,7 +2,7 @@
 
 Sinh tự động bởi `python -m src.retrieval.evaluate`. Tham số và ngưỡng từ chối chọn trên validation; test chỉ chạy với tham số đã chốt.
 
-Số câu: train 64, validation 32, test 64. R@k, MRR, NDCG tính trên câu có nhãn; từ chối đúng tính trên out_of_scope + unsupported, từ chối nhầm tính trên câu hợp lệ.
+Số câu: train 127, validation 57, test 116. R@k, MRR, NDCG tính trên câu có nhãn; từ chối đúng tính trên out_of_scope + unsupported, từ chối nhầm tính trên câu hợp lệ.
 
 Môi trường: scikit-learn 1.9.1, underthesea 9.5.0, chunks_sha256 8b646830eb64, qrels_sha256 4a587a27e0ad, dataset v1 (draft).
 
@@ -10,38 +10,34 @@ Môi trường: scikit-learn 1.9.1, underthesea 9.5.0, chunks_sha256 8b646830eb6
 
 | Mô hình | Token | Tham số | R@1 | R@3 | R@5 | R@10 | MRR | NDCG@10 | Ngưỡng | Từ chối đúng | Từ chối nhầm |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| TFIDF | âm tiết | `{"ngram_range": [1, 1], "sublinear_tf": true}` | 0.096 | 0.281 | 0.364 | 0.494 | 0.320 | 0.310 | 0.173 | 0.40 | 0.07 |
-| BM25 | âm tiết | `{"k1": 1.5, "b": 0.9}` | 0.086 | 0.210 | 0.333 | 0.525 | 0.281 | 0.310 | 6.844 | 0.20 | 0.04 |
-| TFIDF | từ | `{"ngram_range": [1, 1], "sublinear_tf": true}` | 0.105 | 0.216 | 0.284 | 0.395 | 0.237 | 0.263 | 0.000 | 0.00 | 0.00 |
-| BM25 | từ | `{"k1": 1.8, "b": 0.9}` | 0.049 | 0.228 | 0.284 | 0.377 | 0.210 | 0.246 | 0.000 | 0.00 | 0.00 |
-
-Ngưỡng 0 = trên validation không có ngưỡng nào từ chối được câu ngoài phạm vi mà giữ từ chối nhầm trong giới hạn: điểm top-1 của câu không trả lời được không thấp hơn câu hợp lệ.
+| TFIDF | âm tiết | `{"ngram_range": [1, 2], "sublinear_tf": true}` | 0.188 | 0.292 | 0.401 | 0.533 | 0.393 | 0.400 | 0.095 | 0.22 | 0.08 |
+| BM25 | âm tiết | `{"k1": 1.5, "b": 0.9}` | 0.163 | 0.285 | 0.417 | 0.580 | 0.403 | 0.416 | 6.844 | 0.11 | 0.04 |
+| TFIDF | từ | `{"ngram_range": [1, 2], "sublinear_tf": true}` | 0.174 | 0.292 | 0.383 | 0.460 | 0.363 | 0.369 | 0.085 | 0.11 | 0.06 |
+| BM25 | từ | `{"k1": 2.0, "b": 0.9}` | 0.153 | 0.313 | 0.393 | 0.470 | 0.367 | 0.373 | 5.063 | 0.11 | 0.06 |
 
 Theo type (validation, MRR):
 
 | Mô hình | Token | confusable | direct | multi_intent | paraphrase | underspecified |
 |---|---|---|---|---|---|---|
-| TFIDF | âm tiết | 0.567 (n=5) | 0.314 (n=7) | 0.417 (n=2) | 0.278 (n=10) | 0.000 (n=3) |
-| BM25 | âm tiết | 0.326 (n=5) | 0.455 (n=7) | 0.375 (n=2) | 0.188 (n=10) | 0.048 (n=3) |
-| TFIDF | từ | 0.100 (n=5) | 0.462 (n=7) | 0.500 (n=2) | 0.167 (n=10) | 0.000 (n=3) |
-| BM25 | từ | 0.100 (n=5) | 0.385 (n=7) | 0.250 (n=2) | 0.199 (n=10) | 0.000 (n=3) |
+| TFIDF | âm tiết | 0.432 (n=9) | 0.496 (n=13) | 0.500 (n=4) | 0.324 (n=17) | 0.200 (n=5) |
+| BM25 | âm tiết | 0.468 (n=9) | 0.543 (n=13) | 0.438 (n=4) | 0.304 (n=17) | 0.229 (n=5) |
+| TFIDF | từ | 0.407 (n=9) | 0.460 (n=13) | 0.500 (n=4) | 0.280 (n=17) | 0.200 (n=5) |
+| BM25 | từ | 0.343 (n=9) | 0.515 (n=13) | 0.375 (n=4) | 0.313 (n=17) | 0.200 (n=5) |
 
 ## test
 
 | Mô hình | Token | Tham số | R@1 | R@3 | R@5 | R@10 | MRR | NDCG@10 | Ngưỡng | Từ chối đúng | Từ chối nhầm |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| TFIDF | âm tiết | `{"ngram_range": [1, 1], "sublinear_tf": true}` | 0.185 | 0.303 | 0.348 | 0.463 | 0.413 | 0.374 | 0.173 | 0.31 | 0.10 |
-| BM25 | âm tiết | `{"k1": 1.5, "b": 0.9}` | 0.159 | 0.301 | 0.365 | 0.474 | 0.389 | 0.364 | 6.844 | 0.08 | 0.08 |
-| TFIDF | từ | `{"ngram_range": [1, 1], "sublinear_tf": true}` | 0.131 | 0.286 | 0.315 | 0.392 | 0.332 | 0.308 | 0.000 | 0.00 | 0.00 |
-| BM25 | từ | `{"k1": 1.8, "b": 0.9}` | 0.121 | 0.278 | 0.326 | 0.385 | 0.322 | 0.304 | 0.000 | 0.00 | 0.00 |
-
-Ngưỡng 0 = trên validation không có ngưỡng nào từ chối được câu ngoài phạm vi mà giữ từ chối nhầm trong giới hạn: điểm top-1 của câu không trả lời được không thấp hơn câu hợp lệ.
+| TFIDF | âm tiết | `{"ngram_range": [1, 2], "sublinear_tf": true}` | 0.138 | 0.326 | 0.385 | 0.505 | 0.464 | 0.428 | 0.095 | 0.15 | 0.10 |
+| BM25 | âm tiết | `{"k1": 1.5, "b": 0.9}` | 0.162 | 0.314 | 0.371 | 0.497 | 0.499 | 0.432 | 6.844 | 0.04 | 0.07 |
+| TFIDF | từ | `{"ngram_range": [1, 2], "sublinear_tf": true}` | 0.135 | 0.267 | 0.320 | 0.456 | 0.401 | 0.380 | 0.085 | 0.15 | 0.07 |
+| BM25 | từ | `{"k1": 2.0, "b": 0.9}` | 0.145 | 0.272 | 0.342 | 0.444 | 0.445 | 0.388 | 5.063 | 0.15 | 0.07 |
 
 Theo type (test, MRR):
 
 | Mô hình | Token | confusable | direct | multi_intent | paraphrase | underspecified |
 |---|---|---|---|---|---|---|
-| TFIDF | âm tiết | 0.283 (n=11) | 0.603 (n=13) | 0.583 (n=7) | 0.316 (n=15) | 0.262 (n=5) |
-| BM25 | âm tiết | 0.248 (n=11) | 0.466 (n=13) | 0.600 (n=7) | 0.344 (n=15) | 0.340 (n=5) |
-| TFIDF | từ | 0.176 (n=11) | 0.455 (n=13) | 0.571 (n=7) | 0.288 (n=15) | 0.153 (n=5) |
-| BM25 | từ | 0.187 (n=11) | 0.378 (n=13) | 0.548 (n=7) | 0.277 (n=15) | 0.292 (n=5) |
+| TFIDF | âm tiết | 0.340 (n=18) | 0.639 (n=19) | 0.606 (n=14) | 0.389 (n=26) | 0.370 (n=12) |
+| BM25 | âm tiết | 0.379 (n=18) | 0.582 (n=19) | 0.621 (n=14) | 0.434 (n=26) | 0.544 (n=12) |
+| TFIDF | từ | 0.281 (n=18) | 0.597 (n=19) | 0.498 (n=14) | 0.358 (n=26) | 0.251 (n=12) |
+| BM25 | từ | 0.318 (n=18) | 0.515 (n=19) | 0.603 (n=14) | 0.395 (n=26) | 0.450 (n=12) |
