@@ -1,6 +1,6 @@
-# src/app/ — web hỏi đáp (Quân, M6)
+# src/app/: web hỏi đáp (Quân)
 
-Streamlit, gọi `AnswerEngine.answer()` ở `src/answer/`. Giao diện ghép Cổng Dịch vụ công quốc gia (đầu trang chữ có chân màu đỏ đất, thanh menu, nút vàng nghệ) với Kho tri thức UEH hotro.ueh.edu.vn (banner lớn, câu chào "Hãy để chúng tôi hỗ trợ bạn", ô tìm kiếm bo tròn có ảnh hoa sen bên trái, danh sách chủ đề hữu ích mở/đóng, chân trang nhiều cột), giữ tông cam đất. Ảnh mặc định lấy từ Wikimedia Commons: hoa sen, hoạ tiết chim Lạc, hoa văn mặt trống đồng Đông Sơn (phạm vi công cộng hoặc CC BY / CC BY-SA; tác giả và giấy phép từng ảnh ghi trong `images.py`). Không dùng quốc huy; có ghi rõ đây không phải cổng của cơ quan nhà nước.
+Viết bằng Streamlit, gọi `AnswerEngine.answer()` trong `src/answer/`. Giao diện bắt chước Cổng Dịch vụ công quốc gia (đầu trang chữ có chân màu đỏ đất, thanh menu, nút vàng nghệ) và Kho tri thức UEH hotro.ueh.edu.vn (banner lớn, câu chào "Hãy để chúng tôi hỗ trợ bạn", ô tìm kiếm bo tròn có ảnh hoa sen bên trái, danh sách chủ đề hữu ích mở/đóng, chân trang nhiều cột), giữ tông cam đất. Ảnh mặc định lấy trên Wikimedia Commons: hoa sen, hoạ tiết chim Lạc, hoa văn mặt trống đồng Đông Sơn (phạm vi công cộng hoặc CC BY / CC BY-SA, tác giả và giấy phép từng ảnh ghi trong `images.py`). Không dùng quốc huy, và có ghi rõ đây không phải cổng của cơ quan nhà nước.
 
 ## Chạy
 
@@ -11,7 +11,7 @@ pip install -r requirements.txt                 # có streamlit
 streamlit run src/app/main.py                   # dùng pipeline TV3 đã chốt (cần: pip install sentence-transformers torch)
 ```
 
-Ảnh giao diện chỉ có 3 ảnh: `hoa_sen` (bên trái ô tìm kiếm), `chim_lac` (dải chim ở chân trang), `hoa_van_trong_dong` (nền mờ khu tìm kiếm). **Dùng ảnh của mình**: chép ảnh vào `src/app/static/img/`, đặt đúng tên đó (đuôi .jpg/.png/.webp), bấm Ctrl + F5. Thiếu ảnh nào thì web lấy ảnh mặc định từ Wikimedia Commons; muốn tải sẵn ảnh mặc định về máy (không ghi đè ảnh đã có):
+Ảnh giao diện chỉ có 3 ảnh: `hoa_sen` (bên trái ô tìm kiếm), `chim_lac` (dải chim ở chân trang), `hoa_van_trong_dong` (nền mờ khu tìm kiếm). Muốn đổi ảnh thì chép ảnh vào `src/app/static/img/`, đặt đúng tên đó (đuôi .jpg/.png/.webp) rồi bấm Ctrl + F5. Thiếu ảnh nào thì web lấy ảnh mặc định trên Wikimedia Commons. Muốn tải sẵn ảnh mặc định về máy (không ghi đè ảnh đã có) thì chạy:
 
 ```bash
 python -m src.app.images
@@ -26,9 +26,9 @@ $env:ANSWER_PIPELINE="bm25"; streamlit run src/app/main.py
 ANSWER_PIPELINE=bm25 streamlit run src/app/main.py
 ```
 
-Nạp model lỗi (thiếu thư viện, không tải được từ Hugging Face) thì app tự lùi về BM25 và hiện cảnh báo vàng dưới ô tìm kiếm.
+Nếu nạp model bị lỗi (thiếu thư viện, không tải được từ Hugging Face) thì app tự chuyển về BM25 và hiện cảnh báo vàng dưới ô tìm kiếm.
 
-Muốn trang Thống kê có số liệu khi demo: `python -m src.app.demo_seed` (hỏi lần lượt câu train + validation, không lấy test). Xóa lịch sử: xóa file `artifacts/app.db`.
+Muốn trang Thống kê có số liệu lúc demo thì chạy `python -m src.app.demo_seed` (hỏi lần lượt các câu train + validation, không lấy test). Muốn xoá lịch sử thì xoá file `artifacts/app.db`.
 
 ## File
 
@@ -56,13 +56,13 @@ Muốn trang Thống kê có số liệu khi demo: `python -m src.app.demo_seed`
 | Thông báo khi không có căn cứ | Thẻ vàng "Chưa đủ căn cứ để trả lời" + lý do (điểm thấp hơn τ, hoặc văn bản không có con số câu hỏi đòi) + gợi ý liên hệ UBND cấp xã |
 | Lịch sử và thống kê chủ đề | Tab Lịch sử (lọc, hỏi lại, tải CSV); tab Thống kê (tổng lượt, tỉ lệ trả lời/từ chối, % hữu ích, chủ đề hỏi nhiều, Điều được trích nhiều, lượt theo ngày, lý do từ chối) |
 
-Thêm: gợi ý chọn việc cụ thể khi câu thiếu thông tin; lưu ý tự động khi đoạn trích còn ghi "cấp huyện" (Nghị định 120/2025/NĐ-CP chuyển về cấp xã) hoặc là Điều đã hợp nhất sửa đổi; ô "Chi tiết kỹ thuật" hiện pipeline, τ, điểm từng ý (tiện khi trình bày).
+Ngoài ra còn có: gợi ý chọn việc cụ thể khi câu hỏi thiếu thông tin, lưu ý tự động khi đoạn trích còn ghi "cấp huyện" (Nghị định 120/2025/NĐ-CP đã chuyển về cấp xã) hoặc là Điều đã hợp nhất sửa đổi, và ô "Chi tiết kỹ thuật" hiện pipeline, τ, điểm từng ý cho tiện lúc thuyết trình.
 
 ## Deploy lên Streamlit Community Cloud
 
 1. Đăng nhập https://share.streamlit.io bằng tài khoản GitHub có quyền đọc repo.
-2. **Create app** → chọn repo `baoduy23/vn-admin-qa-retrieval`, nhánh `main`, file `src/app/main.py`.
-3. **Advanced settings**: Python 3.11. Ô Secrets để trống (bản đầy đủ). Nếu app bị khởi động lại vì thiếu RAM (2 model PhoBERT-base chạy CPU), thêm vào Secrets dòng `ANSWER_PIPELINE = "bm25"` để chạy bản nhẹ.
-4. Deploy, đợi lần đầu tải model (vài phút). Gửi link cho TV5 đưa vào slide và kịch bản demo.
+2. Bấm Create app, chọn repo `baoduy23/vn-admin-qa-retrieval`, nhánh `main`, file `src/app/main.py`.
+3. Trong Advanced settings chọn Python 3.11. Ô Secrets để trống (bản đầy đủ). Nếu app bị khởi động lại vì thiếu RAM (2 model PhoBERT-base chạy CPU), thêm vào Secrets dòng `ANSWER_PIPELINE = "bm25"` để chạy bản nhẹ.
+4. Deploy, lần đầu phải đợi tải model vài phút. Xong gửi link cho TV5 để đưa vào slide và kịch bản demo.
 
-Lưu ý: ổ đĩa trên Cloud bị xóa khi app khởi động lại nên lịch sử/đánh giá chỉ giữ trong một phiên chạy; buổi demo nên chạy `demo_seed` ở máy hoặc quay video dự phòng.
+Lưu ý: ổ đĩa trên Cloud bị xoá mỗi lần app khởi động lại nên lịch sử và đánh giá chỉ giữ trong một lần chạy. Buổi demo nên chạy `demo_seed` trên máy hoặc quay video dự phòng.

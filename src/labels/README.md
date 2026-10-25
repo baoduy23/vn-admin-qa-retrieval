@@ -1,4 +1,4 @@
-# src/labels/ — gán nhãn chéo và độ đồng thuận (TV2)
+# src/labels/: gán nhãn chéo và độ đồng thuận (TV2)
 
 | File | Làm gì |
 |---|---|

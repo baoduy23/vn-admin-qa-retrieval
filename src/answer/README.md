@@ -1,6 +1,6 @@
-# src/answer/ — trả lời có trích dẫn (Quân, M6)
+# src/answer/: trả lời có trích dẫn (Quân)
 
-Nhận câu hỏi → gọi `retrieve()` của TV3 → trả lời bằng **trích nguyên văn** điều luật kèm nguồn, hoặc **từ chối** khi không đủ căn cứ. Không sinh chữ mới nên câu trả lời luôn faithful với văn bản; rủi ro còn lại là chọn sai đoạn.
+Nhận câu hỏi, gọi `retrieve()` của TV3, rồi trả lời bằng cách trích nguyên văn điều luật kèm nguồn, hoặc từ chối nếu không đủ căn cứ. Vì không sinh chữ mới nên câu trả lời luôn bám đúng văn bản, cái có thể sai là chọn nhầm đoạn.
 
 ```python
 from src.answer import answer
@@ -42,16 +42,16 @@ tách ý (intent.split_multi_intent) ─► mỗi ý: retrieve(ý, k)
 | `retriever.py` | Nạp `retrieve()` của TV3 theo `configs/answer.yaml`; lỗi thì lùi về BM25 |
 | `evaluate_answer.py` | Chọn τ trên validation, đánh giá câu trả lời, so tách / không tách câu nhiều ý |
 
-So khớp chữ làm trên dạng **có dấu** khi câu hỏi có dấu (bỏ dấu thì "đầu" trùng "đâu", "máy" trùng "mấy", "phát" trùng "phạt"), câu gõ không dấu mới so trên dạng bỏ dấu.
+Câu hỏi có dấu thì so chữ trên bản có dấu (vì bỏ dấu thì "đầu" trùng "đâu", "máy" trùng "mấy", "phát" trùng "phạt"), câu gõ không dấu mới so trên bản bỏ dấu.
 
 ## Chọn ngưỡng và đánh giá
 
 ```bash
 python -m src.answer.evaluate_answer                 # validation → configs/answer_selected.yaml, results/answer/
 python -m src.answer.evaluate_answer --live selected # phần câu nhiều ý chạy bằng pipeline TV3 (cần torch)
-python -m src.answer.evaluate_answer --test          # TV2 chạy MỘT lần cuối, τ đã chốt
+python -m src.answer.evaluate_answer --test          # chạy 1 lần cuối với τ đã chốt
 ```
 
-- τ chọn bằng file kết quả chạy validation TV3 đã lưu (`results/retrieval/models/runs/*_validation.csv`), không cần nạp model. Cách chọn giống TV1/TV3: từ chối đúng nhiều nhất mà từ chối nhầm ≤ 10%.
-- Kiểm tra căn cứ con số được bật cho pipeline nào mà trên validation nó tăng từ chối đúng và không vượt trần từ chối nhầm (rerank, hybrid, dense: bật; BM25: tắt).
-- Kết quả: [results/answer/answer_report.md](../../results/answer/answer_report.md).
+- τ chọn dựa trên file kết quả validation TV3 đã lưu (`results/retrieval/models/runs/*_validation.csv`), nên không cần nạp model. Cách chọn giống TV1/TV3: từ chối đúng nhiều nhất mà từ chối nhầm không quá 10%.
+- Kiểm tra căn cứ con số chỉ bật cho pipeline nào mà trên validation nó làm tăng từ chối đúng và không vượt trần từ chối nhầm (bật cho rerank, hybrid, dense, tắt cho BM25).
+- Kết quả ở [results/answer/answer_report.md](../../results/answer/answer_report.md).

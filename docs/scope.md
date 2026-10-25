@@ -4,7 +4,7 @@
 
 **Lĩnh vực đã chọn:** Hộ tịch 
 
-**Lý do:** người dân hỏi nhiều (khai sinh, kết hôn, khai tử, cải chính...). Quy định chia tầng rõ: Luật nêu nguyên tắc, Nghị định và Thông tư hướng dẫn chi tiết, nên có câu hỏi cần ghép nhiều văn bản. Có nhiều Điều nội dung gần giống nhau (ví dụ đăng ký khai sinh trong nước, có yếu tố nước ngoài, ở khu vực biên giới), phục vụ phân tích bắt buộc về tài liệu gần trùng.
+**Lý do:** người dân hỏi nhiều (khai sinh, kết hôn, khai tử, cải chính...). Quy định chia tầng rõ, Luật nêu nguyên tắc còn Nghị định và Thông tư hướng dẫn chi tiết, nên có câu hỏi phải ghép nhiều văn bản. Nhiều Điều có nội dung na ná nhau (vd đăng ký khai sinh trong nước, có yếu tố nước ngoài, ở khu vực biên giới), dùng được cho phần phân tích bắt buộc về tài liệu gần trùng.
 
 **Ngoài phạm vi (dùng làm câu hỏi từ chối):** đất đai, cư trú, thuế, các lĩnh vực khác; quy định chưa có hiệu lực tại ngày chốt kho (ví dụ "Luật Hộ tịch mới năm 2027 có gì thay đổi?").
 
@@ -44,7 +44,7 @@ Url, ngày hiệu lực, tình trạng hiệu lực và ngày tải từng văn 
 
 Đã kiểm tra và **không đưa vào**: Nghị định 121/2025/NĐ-CP (phân quyền, phân cấp lĩnh vực Bộ Tư pháp) không có quy định về hộ tịch.
 
-**Mốc hiệu lực của kho:** kho phản ánh quy định hộ tịch có hiệu lực tại ngày 09/10/2026, dùng được đến 28/02/2027. Luật Hộ tịch số 03/2026/QH16 có hiệu lực từ 01/3/2027 và thay thế toàn bộ Luật 60/2014, không được đưa vào vì chưa có hiệu lực. Đây là giới hạn của dữ liệu, cần ghi lại trong báo cáo. Danh sách văn bản sửa đổi đã đối chiếu với tab Lịch sử trên vbpl.vn ngày 09/10/2026.
+**Mốc hiệu lực của kho:** kho lấy theo quy định hộ tịch còn hiệu lực ngày 09/10/2026, dùng được tới 28/02/2027. Luật Hộ tịch số 03/2026/QH16 có hiệu lực từ 01/3/2027 và thay hết Luật 60/2014, nhưng chưa có hiệu lực nên nhóm không đưa vào. Đây là giới hạn của dữ liệu, phải ghi trong báo cáo. Danh sách văn bản sửa đổi đã đối chiếu với tab Lịch sử trên vbpl.vn ngày 09/10/2026.
 
 **Ngày chốt:** 2026-10-06 (thêm Nghị định 123/2015 và Thông tư 04/2020 ngày 2026-10-08; thêm 07/2025/NĐ-CP, 04/2024/TT-BTP, 87/2020, 104/2022, 120/2025, cách hợp nhất bằng amendments.yaml và mốc hiệu lực ngày 2026-10-09; thêm 18/2026/NĐ-CP và 09/2022/TT-BTP sau khi đối chiếu vbpl.vn cùng ngày)
 

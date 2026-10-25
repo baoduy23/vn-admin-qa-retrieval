@@ -8,22 +8,22 @@ Bản nháp để TV5 ghép vào báo cáo chung. Số liệu lấy từ `result
 
 > Theo `<tên văn bản>`, Điều X Khoản Y: "`<trích nguyên văn>`"
 
-Một đoạn (chunk) có thể là cả một Điều gồm nhiều khoản, nên trước khi trích, hệ thống chọn **dòng** (khoản hoặc điểm) khớp câu hỏi nhất. Điểm của một dòng là tổng IDF các âm tiết nội dung của câu hỏi có mặt trong dòng (đã bỏ hư từ như "thì", "có", "gì"), chia nhẹ theo độ dài dòng. Nếu dòng được chọn là một điểm "a)" thì lấy thêm dòng dẫn phía trên ("1. Hồ sơ gồm:") để câu đọc được. Số Khoản/Điểm trong phần dẫn nguồn đọc trực tiếp từ đầu dòng được trích.
+Một đoạn (chunk) có thể là cả một Điều gồm nhiều khoản, nên trước khi trích, hệ thống chọn dòng (khoản hoặc điểm) khớp câu hỏi nhất. Điểm của một dòng là tổng IDF các âm tiết nội dung của câu hỏi có mặt trong dòng (đã bỏ hư từ như "thì", "có", "gì"), chia nhẹ theo độ dài dòng. Nếu dòng được chọn là một điểm "a)" thì lấy thêm dòng dẫn phía trên ("1. Hồ sơ gồm:") để câu đọc được. Số Khoản/Điểm trong phần dẫn nguồn đọc trực tiếp từ đầu dòng được trích.
 
 Trên validation, trích một dòng cho token F1 so với đáp án mẫu là 0.336, so với 0.305 khi trích cả đoạn (pipeline rerank). F1 thấp là bình thường vì đáp án mẫu là câu tóm tắt ngắn còn câu trả lời là văn bản luật nguyên văn; chỉ số này chỉ dùng để so hai cách trích.
 
-**Faithfulness.** Vì không có chữ nào ngoài khung mẫu và văn bản gốc, câu trả lời không thể chứa thông tin không có trong nguồn. Lỗi còn lại là trích sai đoạn, đo bằng tỉ lệ *đúng nguồn*: trong các câu hợp lệ được trả lời, 46% trích đúng đoạn có trong nhãn (42% nếu chỉ tính đoạn trả lời trực tiếp, relevance 2).
+Về faithfulness: vì không có chữ nào ngoài khung mẫu và văn bản gốc, câu trả lời không thể chứa thông tin không có trong nguồn. Lỗi còn lại là trích sai đoạn, đo bằng tỉ lệ đúng nguồn: trong các câu hợp lệ được trả lời, 46% trích đúng đoạn có trong nhãn (42% nếu chỉ tính đoạn trả lời trực tiếp, relevance 2).
 
 ## 2. Ngưỡng từ chối τ
 
 Hệ thống từ chối khi điểm của đoạn top-1 thấp hơn τ. τ chọn trên validation bằng file kết quả chạy đã lưu của TV3, cùng cách với TV1 và TV3: lấy τ từ chối đúng nhiều câu `out_of_scope` + `unsupported` nhất, với điều kiện từ chối nhầm câu hợp lệ không quá 10%.
 
-Chỉ dùng ngưỡng thì khó chặn câu `unsupported`: các câu này nói đúng chủ đề hộ tịch (ví dụ "Lệ phí cấp bản sao trích lục hộ tịch là bao nhiêu tiền một bản?") nên điểm truy hồi vẫn cao, dù kho không có biểu phí. Vì vậy thêm một bước **kiểm tra căn cứ**: nhận dạng loại con số câu hỏi đòi (số tiền, mức phạt, độ tuổi, thời hạn) bằng mẫu từ khóa, rồi kiểm tra 3 đoạn đầu có chứa con số đúng loại đó không (ví dụ "60 ngày", "… đồng", "miễn lệ phí"). Không có thì từ chối với lý do "văn bản không nêu số tiền mà câu hỏi đòi".
+Chỉ dùng ngưỡng thì khó chặn câu `unsupported`: các câu này nói đúng chủ đề hộ tịch (ví dụ "Lệ phí cấp bản sao trích lục hộ tịch là bao nhiêu tiền một bản?") nên điểm truy hồi vẫn cao, dù kho không có biểu phí. Vì vậy thêm một bước kiểm tra căn cứ: nhận dạng loại con số câu hỏi đòi (số tiền, mức phạt, độ tuổi, thời hạn) bằng mẫu từ khóa, rồi kiểm tra 3 đoạn đầu có chứa con số đúng loại đó không (ví dụ "60 ngày", "… đồng", "miễn lệ phí"). Không có thì từ chối với lý do "văn bản không nêu số tiền mà câu hỏi đòi".
 
 | Pipeline (validation) | τ | Trả lời | Đúng nguồn | Từ chối đúng | Từ chối nhầm |
 |---|---|---|---|---|---|
 | rerank, chỉ ngưỡng | 0.709 | 0.96 | 0.46 | 0.40 | 0.04 |
-| rerank, ngưỡng + kiểm tra căn cứ | 0.709 | 0.96 | 0.46 | **0.60** | 0.04 |
+| rerank, ngưỡng + kiểm tra căn cứ | 0.709 | 0.96 | 0.46 | 0.60 | 0.04 |
 | BM25, chỉ ngưỡng | 6.940 | 1.00 | 0.15 | 0.20 | 0.00 |
 
 Kiểm tra căn cứ tăng từ chối đúng từ 0.40 lên 0.60 mà không tăng từ chối nhầm, nên được bật cho rerank, hybrid và dense. Với BM25, bật nó làm từ chối nhầm vượt 10% nên tắt. Validation chỉ có 5 câu cần từ chối nên các tỉ lệ này thay đổi theo bước 0.2; cần đọc cùng số liệu test.
@@ -32,14 +32,14 @@ Ví dụ lỗi (validation): "Làm hộ chiếu mất bao lâu?" (ngoài phạm 
 
 ## 3. Câu nhiều ý
 
-Câu như "Kết hôn cần giấy gì và nộp ở đâu?" được tách theo liên từ và dấu phẩy ("và", "còn", ","), **chỉ khi mỗi vế đều có từ để hỏi** (gì, đâu, bao lâu, mấy, không…), để không cắt nhầm "cha và mẹ". Vế sau thiếu chủ đề thì được ghép phần chủ đề ở đầu vế trước: "nộp ở đâu" → "Kết hôn nộp ở đâu". Mỗi ý truy hồi riêng; câu trả lời đánh số từng ý; danh sách nguồn xen kẽ kết quả các ý. Từ để hỏi được so khớp trên chữ có dấu, vì bỏ dấu thì "đầu" trùng "đâu", "máy" trùng "mấy".
+Câu như "Kết hôn cần giấy gì và nộp ở đâu?" được tách theo liên từ và dấu phẩy ("và", "còn", ","), chỉ khi mỗi vế đều có từ để hỏi (gì, đâu, bao lâu, mấy, không…), để không cắt nhầm "cha và mẹ". Vế sau thiếu chủ đề thì được ghép phần chủ đề ở đầu vế trước: "nộp ở đâu" → "Kết hôn nộp ở đâu". Mỗi ý truy hồi riêng; câu trả lời đánh số từng ý; danh sách nguồn xen kẽ kết quả các ý. Từ để hỏi được so khớp trên chữ có dấu, vì bỏ dấu thì "đầu" trùng "đâu", "máy" trùng "mấy".
 
 Trên 9 câu `multi_intent` có nhãn của train + validation (truy hồi BM25, vì phần này phải chạy lại truy hồi cho từng ý):
 
 | | R@5 | R@10 | NDCG@5 |
 |---|---|---|---|
 | Không tách | 0.570 | 0.733 | 0.556 |
-| Tách ý | **0.644** | 0.678 | 0.559 |
+| Tách ý | 0.644 | 0.678 | 0.559 |
 
 Tách ý tăng R@5 (5 nguồn hiện trên web) nhưng giảm R@10 vì mỗi ý chỉ góp khoảng 5 đoạn. 78% câu nhiều ý được tách; không câu một ý nào bị tách nhầm. Số câu còn ít nên kết luận chưa chắc; chạy lại bằng pipeline rerank: `python -m src.answer.evaluate_answer --live selected`.
 

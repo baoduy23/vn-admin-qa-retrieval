@@ -1,4 +1,4 @@
-# src/retrieval/ — truy hồi và đánh giá (TV1 baseline, TV2 metrics, TV3 mô hình)
+# src/retrieval/: truy hồi và đánh giá (TV1 baseline, TV2 metrics, TV3 mô hình)
 
 ## Đã có
 
@@ -19,7 +19,7 @@ bm25 = BM25([c["text_seg"] for c in chunks], [c["chunk_id"] for c in chunks])
 bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 ```
 
-`text_seg` cho BM25 mức từ, `chunk_text` cho mức âm tiết. Câu hỏi cũng phải tách từ cùng công cụ thì mới khớp.
+BM25 mức từ dùng `text_seg`, mức âm tiết dùng `chunk_text`. Câu hỏi cũng phải tách từ bằng cùng công cụ thì mới khớp.
 
 ## Sắp làm
 
@@ -27,7 +27,7 @@ bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 |---|---|---|
 | Script đánh giá chung (gọi `metrics.evaluate`) | TV2 | Mọi mô hình chạy qua cùng 1 script; `evaluate.py` của baseline dùng tạm được, TV2 thay hoặc mở rộng |
 
-## Mô hình cải tiến (TV3, M5)
+## Mô hình cải tiến (TV3)
 
 | File | Nội dung |
 |---|---|
@@ -36,8 +36,8 @@ bm25.search("làm giấy khai sinh cần giấy tờ gì", k=5)
 | `fusion.py` | Hybrid: `fuse([dense, bm25], [alpha, 1 - alpha], method="minmax" \| "rrf")`, Python thuần |
 | `rerank.py` | Cross-encoder xếp lại top-20: `Reranker(model_cfg, chunks_by_id).rerank(q, candidates, blend)`. Ứng viên = top-20 bước đầu + tối đa `extra_bm25` chunk đầu BM25 bị bỏ sót (`retrieve.rerank_candidates`). `ce_norm`: điểm cross-encoder min-max trong từng câu (cũ) hay giữ xác suất model cho (`raw`, câu lạc đề thì top-1 thấp thật) |
 | `restore.py` | Khôi phục dấu cho câu gõ không dấu bằng bảng n-gram của kho + câu hỏi train, chỉ cho bi-encoder / cross-encoder (`restore_diacritics`). BM25 vẫn tìm trên chỉ mục bỏ dấu |
-| `retrieve.py` | **`retrieve(question, k=10)`** dùng chung: đọc `configs/retrieval_selected.yaml`; chưa có thì BM25 âm tiết. Câu gõ không dấu tìm BM25 trên bản bỏ dấu của kho |
-| `similar.py` | **`similar_questions(q, k=3)`**: câu hỏi tương tự trong train + validation (không lấy test), mỗi nhóm 1 câu, cosine bi-encoder (không có model thì Dice âm tiết) |
+| `retrieve.py` | `retrieve(question, k=10)` dùng chung: đọc `configs/retrieval_selected.yaml`; chưa có thì BM25 âm tiết. Câu gõ không dấu tìm BM25 trên bản bỏ dấu của kho |
+| `similar.py` | `similar_questions(q, k=3)`: câu hỏi tương tự trong train + validation (không lấy test), mỗi nhóm 1 câu, cosine bi-encoder (không có model thì Dice âm tiết) |
 | `evaluate_models.py` | Chọn model và tham số trên validation (bi-encoder × restore_diacritics, hybrid fusion × alpha, cross-encoder × restore_diacritics × extra_bm25 × blend × ce_norm, ngưỡng câu tương tự; bảng "Công tắc cải tiến" trong báo cáo so bật / tắt) → `configs/retrieval_selected.yaml`; `--test` chạy test 1 lần → `results/retrieval/models/` |
 | `finetune.py` | Nếu kịp: `--bi` fine-tune bi-encoder (MNRL + hard negative), `--cross` PhoBERT phân loại cặp, dữ liệu `train_pairs.csv` chỉ phần train → `artifacts/finetuned/` |
 
@@ -45,7 +45,7 @@ Danh sách model ứng viên và lưới tham số ở `configs/retrieval.yaml`.
 
 ```bash
 python -m src.retrieval.evaluate_models          # validation: chọn model, ghi configs/retrieval_selected.yaml
-python -m src.retrieval.evaluate_models --test   # chạy test MỘT lần với bộ đã chốt
+python -m src.retrieval.evaluate_models --test   # chạy test 1 lần với bộ đã chốt
 ```
 
 ```python
@@ -55,15 +55,15 @@ retrieve("dang ky khai sinh can giay to gi", k=5)   # [(chunk_id, score), ...]
 similar_questions("làm giấy khai sinh cho con cần gì", k=3)
 ```
 
-TV4 ráp vào `answer()`: trong `configs/answer.yaml` đổi `function` thành `"src.retrieval.retrieve:retrieve"`.
+Để `answer()` của TV4 gọi hàm này thì trong `configs/answer.yaml` đổi `function` thành `"src.retrieval.retrieve:retrieve"`.
 
 ## Quy ước chung cho mọi mô hình
 
-Mỗi mô hình có 1 hàm cùng dạng để TV2 đánh giá và TV4 ráp vào web:
+Mô hình nào cũng có 1 hàm cùng dạng để TV2 đánh giá và TV4 gắn vào web:
 
 ```python
 def retrieve(question: str, k: int = 10) -> list[tuple[str, float]]:
     """Trả top-k (chunk_id, score), điểm cao = liên quan hơn."""
 ```
 
-Kết quả ghi vào `results/retrieval/` kèm tên model, phiên bản thư viện và seed.
+Kết quả ghi vào `results/retrieval/`, kèm tên model, phiên bản thư viện và seed.
