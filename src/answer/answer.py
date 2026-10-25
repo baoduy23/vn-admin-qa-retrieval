@@ -27,7 +27,8 @@ from functools import lru_cache
 
 import yaml
 
-from src.answer.intent import (TYPE_LABEL, chunk_topic, evidence_pattern, expected_type, find_procedures, has_evidence,
+from src.answer.intent import (PROCESSING_TIME_EVIDENCE, TYPE_LABEL, asks_processing_time, chunk_topic,
+                               evidence_pattern, expected_type, find_procedures, has_evidence,
                                is_underspecified, out_of_scope_topic, split_multi_intent,
                                topic_head)
 from src.answer.line_scorer import load_line_scorer
@@ -41,6 +42,10 @@ from src.retrieval.retrieve import load_chunks, load_config, load_spec
 
 SELECTED = ROOT / "configs/answer_selected.yaml"
 AUTHORITY_NOTE_CHUNK = "120.2025.ND-CP__PL1__K2"      # cấp huyện → cấp xã (chính quyền 2 cấp)
+# câu hỏi thời gian giải quyết thì xét top-20 để tìm khoản nói thời gian (rerank vốn chấm lại top-20 nên không tốn thêm,
+# và điểm top-1 dùng để từ chối vẫn y như cũ)
+PROCESSING_POOL = 20
+BASE_PROCEDURES = {"Khai sinh", "Kết hôn", "Khai tử"}
 
 REFUSAL_TEXT = {
     "empty": "Bạn chưa nhập câu hỏi (câu không có chữ hay số nào).",
@@ -84,6 +89,10 @@ class AnswerEngine:
         self.cfg = cfg or load_answer_config()
         self.chunks = chunks if chunks is not None else load_chunks()
         self.by_id = {c["chunk_id"]: c for c in self.chunks}
+        self.same_article = {}                  # (văn bản, Điều) → các khoản của Điều đó, theo thứ tự trong kho
+        for c in self.chunks:
+            if c.get("dieu"):
+                self.same_article.setdefault((c["doc_id"], str(c["dieu"])), []).append(c["chunk_id"])
         self.retriever = retriever or load_retriever(self.cfg, self.chunks)
         self.threshold = threshold if threshold is not None else load_thresholds().get(self.retriever.name, 0.0)
         self.evidence_check = load_evidence_check(self.retriever.name, self.cfg.get("evidence_check", True))
@@ -122,9 +131,11 @@ class AnswerEngine:
 
     # trả lời một ý
     def answer_part(self, question: str, k: int) -> dict:
-        hits = self.retriever.search(question, max(k, self.cfg.get("evidence_k", 3)))
+        n = max(k, self.cfg.get("evidence_k", 3))
+        processing = asks_processing_time(question)
+        hits = self.retriever.search(question, max(n, PROCESSING_POOL) if processing else n)
         top_score = hits[0][1] if hits else 0.0
-        part = dict(question=question, hits=hits, top_score=top_score, refused=False, reason=None,
+        part = dict(question=question, hits=hits[:n], top_score=top_score, refused=False, reason=None,
                     answer="", quote_lines=[], chunk_id=None, expected_type=expected_type(question))
         if not hits or top_score < self.threshold:
             part.update(refused=True, reason="low_score")
@@ -134,9 +145,49 @@ class AnswerEngine:
             part.update(refused=True, reason="no_evidence")
             return part
         chunk = self.by_id[hits[0][0]]
-        quote = best_quote(question, chunk, self.idf, evidence_pattern(part["expected_type"]), self.line_scorer)
+        prefer = evidence_pattern(part["expected_type"])
+        found = self.processing_time_chunk(question, hits) if processing else None
+        if found:
+            chunk, score = found
+            prefer = PROCESSING_TIME_EVIDENCE
+            # đưa đoạn được trích lên đầu danh sách nguồn để người xem thấy nó
+            part["hits"] = ([(chunk["chunk_id"], score)] + [h for h in hits if h[0] != chunk["chunk_id"]])[:n]
+        quote = best_quote(question, chunk, self.idf, prefer, self.line_scorer)
         part.update(chunk_id=chunk["chunk_id"], quote_lines=quote, answer=format_answer(chunk, quote))
         return part
+
+    def processing_time_chunk(self, question: str, hits: list) -> tuple[dict, float] | None:
+        """Câu hỏi cơ quan làm mất bao lâu: tìm đoạn có dòng nói thời gian giải quyết ("Ngay sau khi nhận đủ giấy
+        tờ", "05 ngày làm việc") trong các đoạn truy hồi được và các khoản cùng Điều với chúng. Truy hồi hay xếp
+        Điều 15 (hạn 60 ngày phải đi khai sinh) lên đầu vì cùng có "bao lâu", còn câu trả lời nằm ở Điều 16 Khoản 2,
+        khoản cùng Điều với khoản hồ sơ.
+        Câu có nhắc việc hộ tịch thì tên Điều (không có thì tên Mục) phải nói tới ít nhất một việc trong câu, và
+        không được nói tới khai sinh / kết hôn / khai tử mà câu không hỏi, để không trích thời hạn đăng ký lại khai tử
+        cho câu hỏi đăng ký lại khai sinh. Đoạn trùng việc riêng (đăng ký lại, thay đổi...) được ưu tiên hơn đoạn chỉ
+        trùng việc gốc: "sửa giấy khai sinh mất bao lâu" hỏi thủ tục thay đổi, không phải thủ tục khai sinh. Còn lại
+        lấy đoạn xếp trên. Không có đoạn nào thì giữ top-1.
+        Trả về (đoạn, điểm): điểm của chính nó nếu được truy hồi, không thì điểm của khoản cùng Điều kéo nó vào."""
+        procs = set(find_procedures(question))
+        score_of = dict(hits)
+        seen, best = set(), None
+        for cid, score in hits:
+            c = self.by_id.get(cid)
+            if not c:
+                continue
+            for sid in [cid] + self.same_article.get((c["doc_id"], str(c.get("dieu") or "")), []):
+                if sid in seen:
+                    continue
+                seen.add(sid)
+                s = self.by_id[sid]
+                if not PROCESSING_TIME_EVIDENCE.search(clean_query(s.get("display_text", "")).lower()):
+                    continue
+                own = set(find_procedures(s.get("dieu_title") or "")) or set(find_procedures(s.get("muc_ten") or ""))
+                if procs and (not own & procs or (own - procs) & BASE_PROCEDURES):
+                    continue
+                rank = (len(own & procs - BASE_PROCEDURES), -len(seen))
+                if best is None or rank > best[0]:
+                    best = (rank, s, score_of.get(sid, score))
+        return (best[1], best[2]) if best else None
 
     def in_corpus(self, question: str) -> bool:
         """True nếu câu hỏi có ít nhất 1 âm tiết nằm trong kho (so bản bỏ dấu), tức BM25 top-1 > 0."""
