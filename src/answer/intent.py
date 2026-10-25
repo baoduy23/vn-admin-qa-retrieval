@@ -137,6 +137,25 @@ def has_evidence(kind: str | None, texts: list[str]) -> bool:
     return any(pattern.search(clean_query(t).lower()) for t in texts)
 
 
+# Hỏi cơ quan làm mất bao lâu ("mất bao lâu", "bao lâu thì xong", "mấy ngày có kết quả") khác với hỏi hạn người dân
+# phải đi đăng ký ("sinh con bao lâu phải đi khai sinh"). Cả hai đều có "bao lâu" nên expected_type đều là thoi_han,
+# nhưng căn cứ khác nhau: với khai sinh là Điều 16 Khoản 2 Luật Hộ tịch ("Ngay sau khi nhận đủ giấy tờ...") chứ
+# không phải Điều 15 (60 ngày kể từ ngày sinh con).
+PROCESSING_TIME = Pattern(r"\b(mất|hết|chờ|đợi) (bao lâu|mấy ngày|bao nhiêu ngày)"
+                          r"|\b(bao lâu|mấy ngày|bao nhiêu ngày|bao giờ|khi nào)( làm việc)? (thì |mới )?"
+                          r"(xong|có kết quả|có giấy|lấy được|nhận được|được cấp)"
+                          r"|\bthời hạn giải quyết|\bgiải quyết (trong )?(bao lâu|mấy ngày)")
+# dòng luật nói thời gian cơ quan giải quyết (so trên chữ thường có dấu, giống has_evidence)
+# ("Ngay sau khi nhận được thông báo" là việc ghi sổ giữa các cơ quan, không phải thời gian trả kết quả nên không tính)
+PROCESSING_TIME_EVIDENCE = re.compile(r"ngay sau khi nhận (đủ )?(giấy tờ|được yêu cầu)|ngay trong ngày|\d+\s*ngày làm việc"
+                                      r"|thời hạn giải quyết")
+
+
+def asks_processing_time(question: str) -> bool:
+    """True nếu câu hỏi cơ quan giải quyết mất bao lâu, không phải hạn phải đi đăng ký."""
+    return bool(PROCESSING_TIME.search(question))
+
+
 # các việc hộ tịch
 # Dùng để nhận ra câu thiếu thông tin (không nhắc việc nào) và để gom chủ đề ở trang thống kê.
 PROCEDURES = [

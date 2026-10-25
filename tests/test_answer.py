@@ -1,8 +1,8 @@
 """Test phần trả lời và web (Quân). Không cần model: retrieve() được thay bằng hàm giả."""
 from src.answer.answer import AnswerEngine
 from src.answer.evaluate_answer import token_f1
-from src.answer.intent import (expected_type, find_procedures, has_evidence, is_underspecified,
-                               out_of_scope_topic, split_multi_intent)
+from src.answer.intent import (asks_processing_time, expected_type, find_procedures, has_evidence,
+                               is_underspecified, out_of_scope_topic, split_multi_intent)
 from src.answer.retriever import Retriever
 from src.answer.template import citation, format_answer, highlight_html
 from src.app import db
@@ -111,6 +111,46 @@ def test_refuse_low_score_and_no_evidence():
     assert fake_engine([0.9, 0.8]).answer("   ")["reason"] == "empty"
     for junk in ("😀😀", "??? !!!", "___"):                     # không có chữ hay số thì khỏi truy hồi
         assert fake_engine([0.9, 0.8]).answer(junk)["reason"] == "empty"
+
+
+def test_asks_processing_time():
+    # cơ quan làm mất bao lâu
+    for q in ("Đăng ký khai sinh mất bao lâu thì xong?", "dang ky khai sinh bao lau thi co ket qua",
+              "Kết hôn chờ mấy ngày làm việc thì có kết quả?", "Thời hạn giải quyết đăng ký lại khai sinh là mấy ngày?"):
+        assert asks_processing_time(q), q
+    # hạn người dân phải đi đăng ký, hoặc không hỏi thời gian
+    for q in ("Sinh con xong bao lâu phải đi khai sinh?", "Thời hạn đăng ký khai sinh là bao lâu?",
+              "Người mất tích thì đăng ký khai tử thế nào?"):
+        assert not asks_processing_time(q), q
+
+
+def test_processing_time_quotes_same_article():
+    # truy hồi xếp Điều 15 (hạn 60 ngày phải đi khai sinh) lên đầu, Điều 16 Khoản 1 thứ hai; Khoản 2 của Điều 16
+    # không được truy hồi nhưng là khoản nói thời gian giải quyết nên được kéo vào và trích
+    k2 = dict(CHUNKS[0], chunk_id="60.2014.QH13__D16__K2", khoan="2",
+              display_text="2. Ngay sau khi nhận đủ giấy tờ theo quy định tại khoản 1 Điều này, nếu thấy thông tin khai "
+                           "sinh đầy đủ và phù hợp, công chức tư pháp - hộ tịch ghi nội dung khai sinh vào Sổ hộ tịch.")
+    kt = dict(CHUNKS[0], chunk_id="123.2015.ND-CP__D28", dieu="28", khoan=None, muc_ten="ĐĂNG KÝ LẠI KHAI SINH, KẾT HÔN, KHAI TỬ",
+              dieu_title="Điều 28. Thủ tục đăng ký lại khai tử",
+              display_text="2. Trong thời hạn 05 ngày làm việc, kể từ ngày tiếp nhận hồ sơ, công chức tư pháp - hộ tịch kiểm tra.")
+    chunks = CHUNKS + [k2, kt]
+    calls = []
+
+    def search(q, k):
+        calls.append(k)
+        return [(kt["chunk_id"], 0.95), (CHUNKS[1]["chunk_id"], 0.9), (CHUNKS[0]["chunk_id"], 0.8)][:k]
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", search), chunks=chunks, similar=lambda q, k: [], threshold=0.5)
+    r = eng.answer("Đăng ký khai sinh mất bao lâu thì xong?")
+    p = r["parts"][0]
+    assert p["chunk_id"] == k2["chunk_id"]                      # không trích thời hạn đăng ký lại khai tử
+    assert p["quote_lines"][0].startswith("2. Ngay sau khi nhận đủ giấy tờ")
+    assert p["top_score"] == 0.95                               # điểm dùng để từ chối vẫn là top-1 truy hồi
+    assert r["sources"][0]["chunk_id"] == k2["chunk_id"] and r["sources"][0]["used_in_answer"]
+    # câu hỏi hạn phải đi đăng ký thì như cũ: chỉ lấy top-5 và trích đoạn top-1
+    calls.clear()
+    r = eng.answer("Sinh con xong bao lâu phải đi khai sinh?")
+    assert calls == [5]
+    assert r["parts"][0]["chunk_id"] == kt["chunk_id"]
 
 
 def test_multi_intent_answers_each_part():
