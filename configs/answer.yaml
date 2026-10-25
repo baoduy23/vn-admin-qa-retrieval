@@ -29,6 +29,10 @@ quote:
   # So sánh 2 cách: python -m src.answer.compare_quote
   scorer: rerank
 
+# Sửa chữ gõ sai trong câu có dấu trước khi truy hồi ("kết hông" → "kết hôn"), src/answer/spell.py.
+# 300 câu của bộ dữ liệu không câu nào bị sửa nên số đo không đổi. false = như cũ.
+spell_check: true
+
 multi_intent:
   split: true         # tách câu nhiều ý theo liên từ ("và", "còn", dấu phẩy), trả lời từng ý
 

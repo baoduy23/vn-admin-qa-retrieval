@@ -35,7 +35,8 @@ tách ý (intent.split_multi_intent) ─► mỗi ý: retrieve(ý, k)
 |---|---|
 | `answer.py` | `AnswerEngine`, `answer(q)`: ghép các bước trên, nguồn, câu tương tự, lưu ý pháp lý |
 | `template.py` | Mẫu câu trả lời; `best_quote` chọn dòng có tổng IDF âm tiết trùng câu hỏi cao nhất (ưu tiên dòng có con số đúng loại câu hỏi đòi); `citation` đọc số Khoản/Điểm từ đầu dòng; `highlight_html` tô chữ trùng |
-| `intent.py` | Luật nhận dạng: tách câu nhiều ý, loại con số câu hỏi đòi + kiểm tra căn cứ, câu thiếu thông tin, chủ đề (việc hộ tịch) cho thống kê, câu ngoài phạm vi (`out_of_scope_topic`) |
+| `intent.py` | Luật nhận dạng: tách câu nhiều ý, loại con số câu hỏi đòi + kiểm tra căn cứ, câu thiếu thông tin, chủ đề (việc hộ tịch) cho thống kê, câu ngoài phạm vi (`out_of_scope_topic`), khía cạnh câu hỏi (`question_aspect`: thời gian giải quyết, hồ sơ, làm muộn) |
+| `spell.py` | Sửa chữ gõ sai trong câu có dấu theo chữ đứng cạnh (bigram của kho + câu train), vd "kết hông" → "kết hôn" (`spell_check` trong `configs/answer.yaml`) |
 | `line_scorer.py` | Chấm từng khoản / điểm bằng PhoRanker để chọn đoạn trích (`quote.scorer: rerank` trong `configs/answer.yaml`; mặc định `idf`) |
 | `compare_quote.py` | So 2 cách chọn khoản (IDF / PhoRanker) trên train + validation, xuất `results/answer/quote_compare.csv` để chấm tay (cần torch) |
 | `text.py` | Âm tiết bỏ dấu, hư từ, IDF |
