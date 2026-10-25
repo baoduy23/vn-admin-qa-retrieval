@@ -247,7 +247,7 @@ def answer_card(engine, r: dict) -> None:
                       f'<blockquote>“{quote}”</blockquote>{link}')
     notes = ""
     for n in r.get("notes", []):
-        title = "Lưu ý về thẩm quyền" if n["kind"] == "authority" else "Văn bản đã hợp nhất"
+        title = {"authority": "Lưu ý về thẩm quyền", "amended": "Văn bản đã hợp nhất"}.get(n["kind"], "Lưu ý")
         notes += f'<div class="note"><b>{title}:</b> {html.escape(n["text"])}</div>'
     st.markdown(f"""
 <div class="answer-card">
@@ -397,6 +397,9 @@ def tab_home(engine: AnswerEngine) -> None:
     st.write("")
     left, right = st.columns([2.2, 1], gap="large")
     with left:
+        if r.get("spelling"):
+            fixed = ", ".join(f"{a} → {b}" for a, b in r["spelling"])
+            st.caption(f"Đã sửa chữ gõ sai: {fixed}. Câu được tra: “{r['question']}”")
         answer_card(engine, r)
         clarify(r)
         sources(r)

@@ -1,9 +1,13 @@
 """Test phần trả lời và web (Quân). Không cần model: retrieve() được thay bằng hàm giả."""
+import csv
+
 from src.answer.answer import AnswerEngine
 from src.answer.evaluate_answer import token_f1
-from src.answer.intent import (asks_processing_time, expected_type, find_procedures, has_evidence,
+from src.answer.intent import (asks_documents, asks_processing_time, expected_type, find_procedures, has_evidence,
                                is_underspecified, out_of_scope_topic, split_multi_intent)
 from src.answer.retriever import Retriever
+from src.answer.spell import correct_query
+from src.data.split import ROOT
 from src.answer.template import citation, format_answer, highlight_html
 from src.app import db
 
@@ -157,6 +161,75 @@ def test_processing_time_quotes_same_article():
     assert r["parts"][0]["chunk_id"] == kt["chunk_id"]
     # hỏi đúng thủ tục đăng ký lại thì lấy đoạn đăng ký lại
     assert eng.answer("Đăng ký lại khai sinh mất mấy ngày?")["parts"][0]["chunk_id"] == lai["chunk_id"]
+
+
+def test_asks_documents():
+    for q in ("Đăng ký khai sinh cần giấy tờ gì?", "thu tuc nhan cha con o xa vung cao bien gioi can nhung gi",
+              "Kết hôn nộp những giấy tờ nào?", "cần giấy khám sức khỏe gì", "ket hon", "thủ tục khai tử"):
+        assert asks_documents(q), q
+    for q in ("Nộp hồ sơ kết hôn ở đâu?", "Kết hôn với người Hàn Quốc", "cần giấy khai sinh để làm gì",
+              "gio ko co giay to nao ghi ngay thang sinh thi bo sung kieu gi"):
+        assert not asks_documents(q), q
+
+
+BORDER = [dict(CHUNKS[0], chunk_id=f"123.2015.ND-CP__D{d}{'__K' + k if k else ''}", doc_id="123.2015.ND-CP",
+               doc_title="Nghị định 123/2015/NĐ-CP", dieu=d, khoan=k or None, dieu_title=title,
+               muc_ten="ĐĂNG KÝ HỘ TỊCH TẠI KHU VỰC BIÊN GIỚI", display_text=text)
+          for d, k, title, text in [
+              ("17", "", "Điều 17. Đăng ký khai sinh",
+               "1. Ủy ban nhân dân xã ở khu vực biên giới đăng ký khai sinh cho trẻ.\n"
+               "2. Người yêu cầu đăng ký khai sinh xuất trình giấy tờ và nộp các giấy tờ sau đây:"),
+              ("19", "1", "Điều 19. Đăng ký nhận cha, mẹ, con",
+               "1. Ủy ban nhân dân xã ở khu vực biên giới thực hiện đăng ký việc nhận cha, mẹ, con của công dân "
+               "Việt Nam thường trú tại địa bàn xã đó."),
+              ("19", "2", "Điều 19. Đăng ký nhận cha, mẹ, con",
+               "2. Người yêu cầu đăng ký nhận cha, mẹ, con xuất trình giấy tờ và trực tiếp nộp hồ sơ tại Ủy ban nhân "
+               "dân xã; hồ sơ đăng ký nhận cha, mẹ, con gồm các giấy tờ sau đây:\na) Tờ khai nhận cha, mẹ, con."),
+              ("19", "3", "Điều 19. Đăng ký nhận cha, mẹ, con",
+               "3. Trong thời hạn 07 ngày làm việc, kể từ ngày nhận đủ hồ sơ hợp lệ, công chức tư pháp - hộ tịch "
+               "kiểm tra hồ sơ.")]]
+
+
+def test_documents_question_quotes_right_procedure_and_clause():
+    # ảnh lỗi trên app: top-1 là Điều 17 (khai sinh ở biên giới), Điều 19 Khoản 1 (xã nào làm) xếp trên Khoản 2
+    def search(q, k):
+        return [(BORDER[0]["chunk_id"], 0.9), (BORDER[1]["chunk_id"], 0.8), (BORDER[3]["chunk_id"], 0.5)][:k]
+    eng = AnswerEngine(CFG, retriever=Retriever("fake", search), chunks=CHUNKS + BORDER, similar=lambda q, k: [],
+                       threshold=0.5)
+    for q in ("thủ tục nhận cha con ở xã vùng cao biên giới cần những gì",
+              "thu tuc nhan cha con o xa vung cao bien gioi can nhung gi"):
+        p = eng.answer(q)["parts"][0]
+        assert p["chunk_id"] == "123.2015.ND-CP__D19__K2", q        # khoản cùng Điều được kéo vào dù không truy hồi
+        assert p["top_score"] == 0.9
+    # không hỏi hồ sơ thì vẫn trích top-1 như cũ
+    assert eng.answer("nhận cha con ở xã biên giới do xã nào làm")["parts"][0]["chunk_id"] == BORDER[0]["chunk_id"]
+
+
+def test_late_registration_quotes_deadline_with_note():
+    eng = fake_engine([0.9, 0.8])               # Điều 16 Khoản 1 (hồ sơ) xếp trên Điều 15 (hạn 60 ngày)
+    r = eng.answer("làm giấy khai sinh muộn cho con có bị gì không")
+    assert r["parts"][0]["chunk_id"] == "60.2014.QH13__D15"
+    assert r["parts"][0]["quote_lines"][0].startswith("1. Trong thời hạn 60 ngày")
+    assert any(n["kind"] == "coverage" and "xử phạt" in n["text"] for n in r["notes"])
+    # hỏi thẳng có bị phạt không thì vẫn từ chối vì kho không có mức phạt
+    r = eng.answer("khai sinh muộn có bị phạt không")
+    assert r["refused"] and r["reason"] == "no_evidence" and not r["notes"]
+
+
+def test_spell_fixes_typos_from_context():
+    q, fixes = correct_query("thủ tục kết hông với người Đài Loan cần giấy khám sức khóc gì")
+    assert q == "thủ tục kết hôn với người Đài Loan cần giấy khám sức khỏe gì"    # tên riêng, "giấy khám" giữ nguyên
+    assert fixes == [("hông", "hôn"), ("khóc", "khỏe")]
+    assert correct_query("ket hong can giay gi") == ("ket hong can giay gi", [])   # câu không dấu để restore.py lo
+    r = fake_engine([0.9, 0.8]).answer("Kết hông cần giấy gì?")
+    assert r["question"] == "Kết hôn cần giấy gì?" and r["spelling"] == [("hông", "hôn")]
+
+
+def test_spell_keeps_dataset_questions():
+    # không câu nào trong bộ dữ liệu bị sửa, nên số đo validation / test (đọc run theo câu hỏi) không đổi
+    with open(ROOT / "data/labels/questions.csv", encoding="utf-8") as f:
+        changed = [r["question_id"] for r in csv.DictReader(f) if correct_query(r["question"])[1]]
+    assert changed == []
 
 
 def test_multi_intent_answers_each_part():

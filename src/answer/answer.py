@@ -7,6 +7,7 @@
     r["refused"]     # True nếu không đủ căn cứ
 
 Thứ tự xử lý:
+- Câu có dấu mà có chữ gõ sai kiểu "kết hông", "sức khóc" thì sửa trước (spell.py), web hiện các chữ đã sửa.
 - Hỏi lĩnh vực khác (hộ chiếu, đất đai, thuế...) mà không nhắc việc hộ tịch nào thì từ chối luôn (out_of_scope),
   khỏi truy hồi. Câu không có âm tiết nào trong kho ("hello world", gõ bừa) cũng từ chối luôn (no_overlap).
   Phải chặn trước vì khi điểm rerank chuẩn hoá minmax trong tập ứng viên thì đoạn mà hybrid và PhoRanker
@@ -17,6 +18,8 @@ Thứ tự xử lý:
   (no_evidence), để khỏi trả lời bừa câu unsupported.
 - Còn lại thì lấy khoản/điểm khớp nhất trong đoạn top-1, ghép vào mẫu
   Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>".
+  Câu hỏi thời gian giải quyết, hỏi hồ sơ, hay hỏi làm muộn thì sao thì lấy khoản nói đúng khía cạnh đó và đúng
+  thủ tục câu hỏi nhắc (aspect_chunk), có thể không phải top-1.
 - Kèm câu hỏi tương tự (similar_questions của TV3) và gợi ý nếu câu hỏi thiếu thông tin.
 Cả câu chỉ bị từ chối khi ý nào cũng bị từ chối.
 """
@@ -27,12 +30,12 @@ from functools import lru_cache
 
 import yaml
 
-from src.answer.intent import (PROCESSING_TIME_EVIDENCE, TYPE_LABEL, asks_processing_time, chunk_topic,
-                               evidence_pattern, expected_type, find_procedures, has_evidence,
-                               is_underspecified, out_of_scope_topic, split_multi_intent,
-                               topic_head)
+from src.answer.intent import (TYPE_LABEL, chunk_topic, evidence_pattern, expected_type,
+                               find_procedures, has_evidence, is_underspecified, out_of_scope_topic,
+                               question_aspect, split_multi_intent, topic_head)
 from src.answer.line_scorer import load_line_scorer
 from src.answer.retriever import Retriever, load_answer_config, load_retriever
+from src.answer.spell import correct_query
 from src.answer.template import best_quote, citation, format_answer, highlight_html
 from src.answer.text import IDF, content_syllables
 from src.retrieval.bm25 import tokenize
@@ -42,9 +45,9 @@ from src.retrieval.retrieve import load_chunks, load_config, load_spec
 
 SELECTED = ROOT / "configs/answer_selected.yaml"
 AUTHORITY_NOTE_CHUNK = "120.2025.ND-CP__PL1__K2"      # cấp huyện → cấp xã (chính quyền 2 cấp)
-# câu hỏi thời gian giải quyết thì xét top-20 để tìm khoản nói thời gian (rerank vốn chấm lại top-20 nên không tốn thêm,
-# và điểm top-1 dùng để từ chối vẫn y như cũ)
-PROCESSING_POOL = 20
+# câu hỏi thời gian giải quyết / hồ sơ thì xét top-20 để tìm khoản trả lời đúng khía cạnh đó (rerank vốn chấm lại
+# top-20 nên không tốn thêm, và điểm top-1 dùng để từ chối vẫn y như cũ)
+ASPECT_POOL = 20
 BASE_PROCEDURES = {"Khai sinh", "Kết hôn", "Khai tử"}
 
 REFUSAL_TEXT = {
@@ -59,6 +62,8 @@ REFUSAL_TEXT = {
     "no_evidence": ("Các điều khoản tìm được không nêu {label} mà câu hỏi đòi hỏi. Hệ thống không đưa "
                     "ra con số khi không có căn cứ trong văn bản."),
 }
+COVERAGE_NOTE = ("Kho văn bản của hệ thống chưa có nghị định xử phạt vi phạm hành chính, nên hệ thống không trả lời "
+                 "được việc làm muộn có bị xử phạt hay không. Muốn biết chắc, bạn hỏi Ủy ban nhân dân cấp xã nơi cư trú.")
 REFUSAL_HINT = ("Bạn có thể hỏi lại cụ thể hơn, hoặc liên hệ Ủy ban nhân dân cấp xã nơi cư trú "
                 "để được hướng dẫn chính thức.")
 
@@ -132,11 +137,12 @@ class AnswerEngine:
     # trả lời một ý
     def answer_part(self, question: str, k: int) -> dict:
         n = max(k, self.cfg.get("evidence_k", 3))
-        processing = asks_processing_time(question)
-        hits = self.retriever.search(question, max(n, PROCESSING_POOL) if processing else n)
+        aspect = question_aspect(question)
+        hits = self.retriever.search(question, max(n, ASPECT_POOL) if aspect else n)
         top_score = hits[0][1] if hits else 0.0
         part = dict(question=question, hits=hits[:n], top_score=top_score, refused=False, reason=None,
-                    answer="", quote_lines=[], chunk_id=None, expected_type=expected_type(question))
+                    answer="", quote_lines=[], chunk_id=None, expected_type=expected_type(question),
+                    aspect=aspect[0] if aspect else None)
         if not hits or top_score < self.threshold:
             part.update(refused=True, reason="low_score")
             return part
@@ -146,21 +152,24 @@ class AnswerEngine:
             return part
         chunk = self.by_id[hits[0][0]]
         prefer = evidence_pattern(part["expected_type"])
-        found = self.processing_time_chunk(question, hits) if processing else None
+        found = self.aspect_chunk(question, hits, aspect[1]) if aspect else None
         if found:
             chunk, score = found
-            prefer = PROCESSING_TIME_EVIDENCE
+            prefer = aspect[1]
             # đưa đoạn được trích lên đầu danh sách nguồn để người xem thấy nó
             part["hits"] = ([(chunk["chunk_id"], score)] + [h for h in hits if h[0] != chunk["chunk_id"]])[:n]
         quote = best_quote(question, chunk, self.idf, prefer, self.line_scorer)
         part.update(chunk_id=chunk["chunk_id"], quote_lines=quote, answer=format_answer(chunk, quote))
         return part
 
-    def processing_time_chunk(self, question: str, hits: list) -> tuple[dict, float] | None:
-        """Câu hỏi cơ quan làm mất bao lâu: tìm đoạn có dòng nói thời gian giải quyết ("Ngay sau khi nhận đủ giấy
-        tờ", "05 ngày làm việc") trong các đoạn truy hồi được và các khoản cùng Điều với chúng. Truy hồi hay xếp
-        Điều 15 (hạn 60 ngày phải đi khai sinh) lên đầu vì cùng có "bao lâu", còn câu trả lời nằm ở Điều 16 Khoản 2,
-        khoản cùng Điều với khoản hồ sơ.
+    def aspect_chunk(self, question: str, hits: list, evidence: re.Pattern) -> tuple[dict, float] | None:
+        """Câu hỏi một khía cạnh cụ thể (cơ quan làm mất bao lâu, cần nộp giấy tờ gì, làm muộn thì sao): tìm đoạn có
+        dòng trả lời đúng khía cạnh đó (evidence, vd "05 ngày làm việc", "hồ sơ gồm", "60 ngày kể từ ngày sinh") trong
+        các đoạn truy hồi được và các khoản cùng Điều với chúng. Hai lỗi hay gặp:
+        - Truy hồi xếp Điều 15 (hạn 60 ngày phải đi khai sinh) lên đầu vì cùng có "bao lâu", còn câu trả lời nằm ở
+          Điều 16 Khoản 2, khoản cùng Điều với khoản hồ sơ.
+        - Các Điều liền nhau trong một Mục na ná nhau: hỏi "nhận cha con ở xã biên giới cần những gì" mà top-1 là
+          NĐ 123 Điều 17 (khai sinh ở biên giới), trong khi đúng là Điều 19 Khoản 2 (hồ sơ nhận cha, mẹ, con).
         Câu có nhắc việc hộ tịch thì tên Điều (không có thì tên Mục) phải nói tới ít nhất một việc trong câu, và
         không được nói tới việc nào câu không hỏi: "khai sinh mất bao lâu" không được trích thời hạn đăng ký lại
         khai sinh (NĐ 123 Điều 26), "đăng ký lại khai sinh" không được trích đăng ký lại khai tử. Đoạn trùng việc
@@ -179,7 +188,7 @@ class AnswerEngine:
                     continue
                 seen.add(sid)
                 s = self.by_id[sid]
-                if not PROCESSING_TIME_EVIDENCE.search(clean_query(s.get("display_text", "")).lower()):
+                if not evidence.search(clean_query(s.get("display_text", "")).lower()):
                     continue
                 own = set(find_procedures(s.get("dieu_title") or "")) or set(find_procedures(s.get("muc_ten") or ""))
                 if procs and (not own & procs or own - procs):
@@ -215,7 +224,10 @@ class AnswerEngine:
     def answer(self, question: str, k: int | None = None) -> dict:
         k = k or self.cfg.get("top_k", 5)
         q = clean_query(question).strip()
-        base = dict(question=q, pipeline=self.retriever.name, threshold=self.threshold, warning=self.warning)
+        # sửa chữ gõ sai trước khi lọc và truy hồi ("kết hông" → "kết hôn"), web hiện các chữ đã sửa
+        q, spelling = correct_query(q) if self.cfg.get("spell_check", True) else (q, [])
+        base = dict(question=q, spelling=spelling, pipeline=self.retriever.name, threshold=self.threshold,
+                    warning=self.warning)
         # không có chữ hay số nào (chỉ emoji, dấu câu, "___") thì coi như chưa nhập, khỏi truy hồi.
         # Hồi trước câu kiểu này rơi xuống no_overlap (báo "tiếng nước ngoài"), mà tắt no_overlap thì nó lại đi truy hồi.
         if not re.search(r"[^\W_]", q):
@@ -292,8 +304,12 @@ class AnswerEngine:
 
     def notes(self, parts: list[dict], sources: list[dict]) -> list[dict]:
         """Thêm lưu ý pháp lý. Đoạn trích còn ghi "cấp huyện" thì dẫn thêm Nghị định 120/2025/NĐ-CP
-        (chuyển việc của cấp huyện về cấp xã), trích nguyên văn câu đầu của khoản đó."""
+        (chuyển việc của cấp huyện về cấp xã), trích nguyên văn câu đầu của khoản đó.
+        Hỏi làm muộn thì sao thì nói rõ kho không có nghị định xử phạt: hệ thống chỉ trích được hạn phải đăng ký,
+        không có căn cứ để nói có bị phạt hay không."""
         out = []
+        if any(p.get("aspect") == "lam_muon" and not p["refused"] for p in parts):
+            out.append(dict(kind="coverage", text=COVERAGE_NOTE, url=""))
         used = [s for s in sources if s["used_in_answer"]]
         if any("cap huyen" in strip_accents(" ".join(s["quote_lines"])) for s in used):
             c = self.by_id.get(AUTHORITY_NOTE_CHUNK)

@@ -156,6 +156,49 @@ def asks_processing_time(question: str) -> bool:
     return bool(PROCESSING_TIME.search(question))
 
 
+# Hỏi hồ sơ ("cần những gì", "giấy tờ gì", "hồ sơ gồm") thì khoản trả lời phải là khoản liệt kê giấy tờ phải nộp. Vd
+# "nhận cha con ở xã biên giới cần những gì" là NĐ 123 Điều 19 Khoản 2 (hồ sơ gồm...), không phải Khoản 1 (xã nào
+# làm) dù Khoản 1 trùng nhiều chữ hơn. Chỉ bắt khi có từ để hỏi đi kèm, vì "nộp hồ sơ ở đâu" là hỏi nơi nộp.
+# "nào" chỉ tính khi có động từ đi trước: "không có giấy tờ nào ghi ngày sinh" không phải hỏi hồ sơ.
+DOCUMENTS = Pattern(r"\b(giấy tờ|hồ sơ|giấy) gì\b"
+                    r"|\b(cần|nộp|chuẩn bị|mang theo|mang|xuất trình)( những| các)?( giấy tờ| giấy| hồ sơ)? (gì|nào)\b"
+                    r"|\bhồ sơ (gồm|cần)\b|\bcần những giấy|\b(cần|nộp) giấy( (?!để\b)\w+){1,4} gì\b")
+# dòng luật nói phải nộp / xuất trình giấy tờ gì. Không lấy chữ "hồ sơ" đứng một mình: khoản thời hạn cũng có
+# "kể từ ngày nhận đủ hồ sơ hợp lệ"
+DOCUMENTS_EVIDENCE = re.compile(r"\b(nộp|xuất trình)( lại| các| những| thêm| kèm theo| kèm)? (giấy|tờ khai|hồ sơ|bản sao|"
+                                r"bản chính|văn bản|trích lục)|hồ sơ[^.;:]{0,60}\bgồm\b|giấy tờ sau")
+
+
+def asks_documents(question: str) -> bool:
+    """True nếu câu hỏi cần nộp giấy tờ gì, hoặc chỉ gõ tên một việc hộ tịch ("kết hôn", "thủ tục khai tử"): người
+    gõ vậy thường muốn biết thủ tục, nên trích khoản nộp tờ khai, giấy tờ của thủ tục đó."""
+    return bool(DOCUMENTS.search(question)) or is_bare_procedure(question)
+
+
+def is_bare_procedure(question: str) -> bool:
+    return (len(find_procedures(question)) == 1 and len(content_syllables(question)) <= 4
+            and not QUESTION_WORD.search(question))
+
+
+# Hỏi làm muộn / không làm thì sao ("khai sinh muộn có bị gì không", "quá hạn khai tử có sao không"): trích khoản
+# nói hạn phải đi đăng ký (Luật Hộ tịch Điều 15, Điều 33) và nói rõ kho không có nghị định xử phạt (notes). Hỏi thẳng
+# "có bị phạt không" thì vẫn là loại muc_phat ở trên: không có căn cứ mức phạt thì từ chối.
+LATE = Pattern(r"\b(muộn|trễ|quá hạn|chậm|không (đi )?(đăng ký|khai|làm))\b.*"
+               r"\b(có bị gì|bị gì|có sao|bị sao|hậu quả|ảnh hưởng gì)")
+LATE_EVIDENCE = re.compile(r"\d+ ngày,? kể từ ngày (sinh|có người chết|chết)")
+
+# (tên, hàm nhận câu hỏi, mẫu dòng luật trả lời được khía cạnh đó), xét theo thứ tự
+ASPECTS = [("thoi_gian_giai_quyet", asks_processing_time, PROCESSING_TIME_EVIDENCE),
+           ("ho_so", asks_documents, DOCUMENTS_EVIDENCE),
+           ("lam_muon", lambda q: bool(LATE.search(q)), LATE_EVIDENCE)]
+
+
+def question_aspect(question: str) -> tuple[str, re.Pattern] | None:
+    """(tên khía cạnh, mẫu dòng luật trả lời được khía cạnh đó) mà câu hỏi đang hỏi: thời gian giải quyết, hồ sơ, làm
+    muộn thì sao. None nếu không hỏi khía cạnh nào. Câu hỏi nhiều khía cạnh thì split_multi_intent đã tách trước."""
+    return next(((name, ev) for name, ask, ev in ASPECTS if ask(question)), None)
+
+
 # các việc hộ tịch
 # Dùng để nhận ra câu thiếu thông tin (không nhắc việc nào) và để gom chủ đề ở trang thống kê.
 PROCEDURES = [
@@ -169,7 +212,7 @@ PROCEDURES = [
                                     r"xác định lại dân tộc|đổi tên|sửa (tên|thông tin|giấy)"),
     ("Ly hôn, hủy kết hôn", r"ly hôn|hủy việc kết hôn"),
     ("Trích lục, bản sao", r"trích lục|bản sao"),
-    ("Đăng ký lại", r"đăng ký lại"),
+    ("Đăng ký lại", r"đăng ký lại|làm lại (giấy )?(khai sinh|khai tử|chứng nhận kết hôn)"),
     ("Hộ tịch điện tử, trực tuyến", r"trực tuyến|online|điện tử|cơ sở dữ liệu"),
 ]
 _PROC = [(name, Pattern(rf"\b(?:{pat})")) for name, pat in PROCEDURES]
