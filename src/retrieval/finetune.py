@@ -1,20 +1,20 @@
-"""Fine-tune bằng hard negative của TV1 (data/processed/train_pairs.csv), CHỈ dùng câu thuộc train.
+"""Fine-tune bằng hard negative của TV1 (data/processed/train_pairs.csv), chỉ dùng câu thuộc train.
 
     python -m src.retrieval.finetune --bi      bi-encoder, MultipleNegativesRankingLoss có hard negative
                                                → artifacts/finetuned/bi-encoder
     python -m src.retrieval.finetune --cross   PhoBERT phân loại cặp (câu hỏi, chunk) → liên quan / không,
                                                BCE → artifacts/finetuned/cross-encoder
 
-Sau đó bỏ comment khối "artifacts/finetuned/..." trong configs/retrieval.yaml rồi chạy lại
-python -m src.retrieval.evaluate_models: model fine-tune được so trên validation như mọi model khác.
+Xong thì bỏ comment khối "artifacts/finetuned/..." trong configs/retrieval.yaml rồi chạy lại
+python -m src.retrieval.evaluate_models, model fine-tune sẽ được so trên validation như các model khác.
 
-Tham số trong configs/retrieval.yaml (finetune). Dữ liệu ít (43 câu train có cặp, ~590 cặp) nên
-đừng kỳ vọng nhiều; kết quả fine-tune chỉ tính nếu thắng trên validation.
+Tham số nằm trong configs/retrieval.yaml (mục finetune). Dữ liệu ít (43 câu train có cặp, khoảng 590 cặp)
+nên đừng mong nhiều, model fine-tune chỉ được dùng nếu thắng trên validation.
 
-MNRL (Henderson và cộng sự 2017): với mỗi câu hỏi q_i, positive p_i phải có cosine cao hơn mọi
-passage khác trong batch (positive của câu khác + hard negative):
+MNRL (Henderson et al. 2017): với câu hỏi q_i, positive p_i phải có cosine cao hơn mọi passage khác
+trong batch (positive của câu khác và hard negative):
     loss = CE(scale * [cos(q_i, p_1..p_B), cos(q_i, n_1..n_B)], nhãn = i)
-Passage trong batch mà thực ra cũng là positive của q_i thì bị che (không tính là negative).
+Passage nào trong batch mà thật ra cũng là positive của q_i thì bị che, không tính là negative.
 """
 from __future__ import annotations
 
@@ -33,13 +33,13 @@ OUT = ROOT / "artifacts/finetuned"
 
 
 def load_pairs():
-    """→ ({question_id: câu hỏi}, {question_id: [chunk_id positive]}, {question_id: [chunk_id negative]}, chunks)."""
+    """Trả về ({question_id: câu hỏi}, {question_id: [chunk_id positive]}, {question_id: [chunk_id negative]}, chunks)."""
     chunks, questions, _ = load_data()
     train_q = {q["question_id"]: q["question"] for q in questions if q["split"] == "train"}
     pos, neg = defaultdict(list), defaultdict(list)
     with open(PAIRS, encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            if r["question_id"] not in train_q:                      # chống rò rỉ: chỉ train
+            if r["question_id"] not in train_q:                      # chỉ lấy train để không rò rỉ dữ liệu
                 continue
             (pos if r["label"] == "1" else neg)[r["question_id"]].append(r["chunk_id"])
     return train_q, dict(pos), dict(neg), {c["chunk_id"]: c for c in chunks}

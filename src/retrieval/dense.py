@@ -1,16 +1,16 @@
-"""SBERT bi-encoder (M5, TV3): mã hóa câu hỏi và chunk thành vector, xếp hạng bằng cosine.
+"""SBERT bi-encoder (TV3): mã hoá câu hỏi và chunk thành vector rồi xếp hạng bằng cosine.
 
-Mỗi model khai báo trong configs/retrieval.yaml (dense_models):
+Model khai báo trong configs/retrieval.yaml (mục dense_models):
   name            tên trên Hugging Face hoặc đường dẫn model đã fine-tune (artifacts/finetuned/...)
   segment         true nếu model học trên văn bản đã tách từ (PhoBERT: "đăng_ký khai_sinh").
                   Khi đó chunk dùng cột text_seg, câu hỏi tách từ bằng cùng hàm segment() (issue #7)
   query_prefix /  tiền tố model yêu cầu, vd multilingual-e5: "query: " / "passage: "
   passage_prefix
   max_seq_length  PhoBERT tối đa 256 token; chunk của kho tối đa 200 từ nên gần như không bị cắt
-  restore_diacritics  true: câu hỏi gõ không dấu được khôi phục dấu trước khi mã hóa (chọn trên validation)
+  restore_diacritics  true thì câu gõ không dấu được khôi phục dấu trước khi mã hoá (chọn trên validation)
 
-Embedding của kho lưu ở artifacts/embeddings/<model>__<hash>.npy (không commit). Hash tính trên
-tên model + toàn bộ văn bản đưa vào, nên đổi chunks.jsonl hay đổi model thì tự mã hóa lại.
+Embedding của kho lưu ở artifacts/embeddings/<model>__<hash>.npy (không commit). Hash tính từ tên model
+và toàn bộ văn bản đưa vào, nên đổi chunks.jsonl hoặc đổi model thì nó tự mã hoá lại.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class DenseIndex:
         self.emb = self._encode_cached(passage_texts(chunks, mcfg))
 
     def encode(self, texts: list[str]) -> np.ndarray:
-        """Vector đã chuẩn hóa L2 → tích vô hướng = cosine."""
+        """Vector đã chuẩn hoá L2, nên tích vô hướng chính là cosine."""
         return self.model.encode(texts, batch_size=self.batch_size, normalize_embeddings=True,
                                  convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
 
@@ -76,7 +76,7 @@ class DenseIndex:
         return emb
 
     def query_vector(self, question: str, restore: bool | None = None) -> np.ndarray:
-        """restore=None: theo cfg (restore_diacritics); evaluate_models truyền True / False để thử cả hai."""
+        """restore=None thì làm theo cfg (restore_diacritics). evaluate_models truyền True / False để thử cả hai."""
         restore = self.cfg.get("restore_diacritics", False) if restore is None else restore
         q = model_input(question, self.cfg.get("segment", False), self.cfg.get("query_prefix", ""), restore)
         return self.encode([q])[0]

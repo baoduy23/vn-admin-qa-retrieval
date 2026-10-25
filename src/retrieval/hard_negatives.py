@@ -1,10 +1,10 @@
 """Đào hard negative cho bi-encoder / cross-encoder (M02, mục 11 hướng dẫn TV1).
 
-Với mỗi câu hỏi TRAIN có nhãn: lấy top-k của BM25 mức từ; chunk nằm trong top-k mà không nằm trong qrels
-là hard negative (giống câu hỏi về chữ nhưng không trả lời nó). Bỏ thêm các chunk cùng Điều với chunk đúng,
-vì Khoản bên cạnh thường cũng liên quan mà người gán nhãn chưa gán → dễ thành "negative giả".
-Chỉ dùng train; validation và test không được đụng tới. Bỏ câu underspecified: câu hỏi mơ hồ thì
-chunk nào trong top-k cũng có thể đúng, lấy làm negative sẽ dạy sai mô hình.
+Với mỗi câu train có nhãn, lấy top-k của BM25 mức từ. Chunk nào nằm trong top-k mà không có trong qrels
+là hard negative (giống câu hỏi về chữ nhưng không trả lời được). Bỏ luôn các chunk cùng Điều với chunk đúng,
+vì Khoản bên cạnh hay cũng liên quan mà người gán nhãn chưa gán, lấy vào dễ thành negative giả.
+Chỉ dùng train, không đụng validation và test. Bỏ câu underspecified, vì câu mơ hồ thì chunk nào trong
+top-k cũng có thể đúng, lấy làm negative là dạy sai mô hình.
 
 Đầu ra: data/processed/train_pairs.csv
     question_id, chunk_id, label (1 = đúng, 0 = hard negative), relevance (qrels, chỉ dòng label 1),
@@ -24,7 +24,7 @@ from src.retrieval.evaluate import NO_QRELS, load_data, query_text
 
 
 def bm25_params(cfg):
-    """k1, b của BM25 mức từ đã chọn trên validation; chưa chạy evaluate thì lấy trong config."""
+    """k1, b của BM25 mức từ đã chọn trên validation, chưa chạy evaluate thì lấy trong config."""
     path = ROOT / "results/retrieval/baseline_results.csv"
     if path.exists():
         for r in csv.DictReader(open(path, encoding="utf-8")):

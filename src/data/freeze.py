@@ -1,12 +1,12 @@
 """Kiểm tra Dataset v1 rồi ghi data/dataset_manifest.json (D06, mục 9.2 và 9.3 hướng dẫn TV1).
 
-Các tiêu chí tự kiểm được ở mục 9.2 chạy ở đây; 2 tiêu chí cần người (đã tính kappa, nhóm đã duyệt
-báo cáo) thì chỉ kiểm có file hay chưa và quyết định review_status:
+Các tiêu chí ở mục 9.2 mà máy tự kiểm được thì chạy ở đây. 2 tiêu chí cần người (đã tính kappa, nhóm đã duyệt
+báo cáo) thì chỉ kiểm xem có file chưa, rồi đặt review_status:
     "draft"  : còn câu hỏi source=generated chưa duyệt hoặc chưa có label_agreement.md
     "frozen" : chạy với --final, mọi kiểm tra pass và không còn cảnh báo
 
 Chạy từ gốc repo:  python -m src.data.freeze            (ghi manifest bản nháp)
-                   python -m src.data.freeze --final    (chốt v1; lỗi hay cảnh báo nào cũng dừng)
+                   python -m src.data.freeze --final    (chốt v1, có lỗi hay cảnh báo là dừng)
 """
 import csv
 import hashlib
@@ -30,7 +30,7 @@ def read_csv(rel):
 
 
 def sha256(rel):
-    # bỏ \r trước khi băm: Git trên Windows (autocrlf) checkout ra CRLF, máy nào băm cũng phải ra cùng 1 mã
+    # bỏ \r trước khi băm vì Git trên Windows (autocrlf) checkout ra CRLF, mà máy nào băm cũng phải ra cùng 1 mã
     return hashlib.sha256((ROOT / rel).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
@@ -42,7 +42,7 @@ def git(*args):
 
 
 def run_checks():
-    """Trả về (errors, warnings, info). errors = vi phạm tiêu chí freeze."""
+    """Trả về (errors, warnings, info). errors là các chỗ vi phạm tiêu chí freeze."""
     err, warn = [], []
     chunks = [json.loads(l) for l in open(ROOT / "data/processed/chunks.jsonl", encoding="utf-8")]
     ids = [c["chunk_id"] for c in chunks]

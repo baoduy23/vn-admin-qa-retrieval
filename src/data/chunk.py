@@ -4,10 +4,9 @@
           data/raw/source_list.csv, data/raw/amendments.yaml, configs/chunking.yaml
 Đầu ra  : data/processed/chunks.jsonl, mỗi dòng 1 đoạn
 
-Quy tắc (docs/huong-dan-thanh-vien-1.md mục 6):
-  1 Điều = 1 đoạn. Điều dài quá max_tokens (đếm sau tách từ) thì tách theo Khoản;
-  Khoản vẫn dài thì gom các Điểm thành từng phần (__P1, __P2...).
-  Unit đã bị bãi bỏ (status = repealed) không vào kho.
+Quy tắc (docs/huong-dan-thanh-vien-1.md mục 6): mỗi Điều là 1 đoạn. Điều dài quá max_tokens (đếm sau
+khi tách từ) thì tách theo Khoản, Khoản vẫn dài thì gom các Điểm thành từng phần (__P1, __P2...).
+Unit đã bị bãi bỏ (status = repealed) thì không đưa vào kho.
 
 Chạy từ gốc repo:  python -m src.data.chunk
 """
@@ -25,11 +24,11 @@ from src.data.parse_law import ROOT, RE_KHOAN, RE_DIEM, RE_PL_MUC
 ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
 
 
-# ---------- 1. Tách từ và đếm token ----------
-@lru_cache(maxsize=8192)                   # có giới hạn: app gọi segment cho mọi câu hỏi người dùng gõ
+# 1. Tách từ và đếm token
+@lru_cache(maxsize=8192)                   # để maxsize vì app gọi segment cho mọi câu người dùng gõ
 def segment(text):
     """Tách từ bằng underthesea: "đăng ký khai sinh" → "đăng_ký khai_sinh".
-    Tách riêng từng phần quanh " | " của tiền tố, không thì underthesea nối dấu | với chữ sau ("|_Khoản")."""
+    Tách riêng từng phần hai bên " | " của tiền tố, không thì underthesea dính dấu | vào chữ sau ("|_Khoản")."""
     return " | ".join(word_tokenize(part, format="text") for part in text.split(" | "))
 
 
@@ -37,7 +36,7 @@ def n_tokens(text):
     return len(segment(text).split())
 
 
-# ---------- 2. Tên ngắn của văn bản (dùng trong tiền tố) ----------
+# 2. Tên ngắn của văn bản (dùng trong tiền tố)
 def short_name(doc_id):
     """60.2014.QH13 → Luật Hộ tịch 60/2014/QH13; 123.2015.ND-CP → Nghị định 123/2015/NĐ-CP."""
     so, nam, loai = doc_id.split(".", 2)
@@ -47,7 +46,7 @@ def short_name(doc_id):
     return f"{ten} {so}/{nam}/{loai.replace('ND-', 'NĐ-')}"
 
 
-# ---------- 3. Gom unit thành nhóm (1 nhóm = 1 Điều hoặc 1 mục Phụ lục) ----------
+# 3. Gom unit thành nhóm (1 nhóm = 1 Điều hoặc 1 mục Phụ lục)
 def wanted(rule, dieu, khoan):
     """Unit (dieu, khoan) có nằm trong phần được chunk của văn bản không."""
     if rule == "all":
@@ -58,7 +57,7 @@ def wanted(rule, dieu, khoan):
 
 
 def is_partial(rule, dieu):
-    """Điều chỉ giữ vài Khoản → luôn chunk theo Khoản để chunk_id không giả vờ là cả Điều."""
+    """Điều chỉ lấy vài Khoản thì luôn chunk theo Khoản, để chunk_id không bị hiểu nhầm là cả Điều."""
     return rule != "all" and dieu not in rule.get("dieu", []) and dieu in rule.get("khoan", {})
 
 
@@ -121,7 +120,7 @@ def group_units(units, include, drop_repealed=True):
     return [g for g in groups if g["intro"] or g["khoans"]]
 
 
-# ---------- 4. Cắt nhóm thành đoạn ----------
+# 4. Cắt nhóm thành đoạn
 def split_sentences(text):
     """Tách câu cho đoạn quá dài mà không có Điểm: cắt sau dấu . ; : (giữ dấu)."""
     return [s for s in re.split(r"(?<=[.;:])\s+", text) if s]
@@ -131,14 +130,14 @@ def pack(header, pieces, max_tokens):
     """Gom các mẩu liên tiếp thành phần, mỗi phần (cả tiền tố) không quá max_tokens."""
     parts, cur = [], []
     for p in pieces:
-        if n_tokens(header + "\n" + p) > max_tokens:   # 1 mẩu đã quá dài → cắt theo câu
+        if n_tokens(header + "\n" + p) > max_tokens:   # mẩu này dài quá thì cắt theo câu
             if cur:
                 parts.append(cur)
                 cur = []
             sents = split_sentences(p)
             if len(sents) > 1:
                 parts += pack(header, sents, max_tokens)
-            else:                                        # 1 câu vẫn quá dài: cắt đôi theo âm tiết
+            else:                                        # 1 câu mà vẫn dài quá thì cắt đôi theo âm tiết
                 w = p.split()
                 parts += pack(header, [" ".join(w[:len(w) // 2]), " ".join(w[len(w) // 2:])], max_tokens)
             continue
@@ -182,15 +181,15 @@ def chunk_group(g, max_tokens):
                 lead.append(l)
         if lead:
             pieces.insert(0, "\n".join(lead))
-        # tính cả chữ " (phần 9)" sẽ gắn vào tiền tố, kẻo phần nào cũng lố vài token
+        # tính luôn chữ " (phần 9)" sẽ gắn vào tiền tố, không thì phần nào cũng lố vài token
         for i, p in enumerate(pack(head + " (phần 9)", pieces, max_tokens), 1):
             out.append((f"__K{k}__P{i}", k, i, head + f" (phần {i})", "\n".join(p)))
     return out
 
 
-# ---------- 5. Dựng chunks ----------
+# 5. Dựng chunks
 def load_ops_doc(path):
-    """id op → văn bản sửa đổi (để amended_by ghi số hiệu văn bản chứ không phải id op)."""
+    """Map id op sang văn bản sửa đổi, để amended_by ghi số hiệu văn bản chứ không phải id op."""
     ops = yaml.safe_load(open(path, encoding="utf-8")) or []
     return {o["id"]: o["source"]["doc"] for o in ops}
 
@@ -218,9 +217,9 @@ def build_chunks(units, src, include, op_doc, max_tokens, drop_repealed=True):
     return chunks
 
 
-# ---------- 6. Kiểm tra (mục 6.2 hướng dẫn TV1) ----------
+# 6. Kiểm tra (mục 6.2 hướng dẫn TV1)
 def check_chunks(chunks, max_tokens):
-    """Trả về list lỗi; rỗng = đạt."""
+    """Trả về list lỗi, rỗng là đạt."""
     errs = []
     ids = [c["chunk_id"] for c in chunks]
     dup = {i for i in ids if ids.count(i) > 1}
@@ -239,7 +238,7 @@ def check_chunks(chunks, max_tokens):
 
 
 def sha256(path):
-    # bỏ \r trước khi băm: Git trên Windows (autocrlf) checkout ra CRLF, máy nào băm cũng phải ra cùng 1 mã
+    # bỏ \r trước khi băm vì Git trên Windows (autocrlf) checkout ra CRLF, mà máy nào băm cũng phải ra cùng 1 mã
     return hashlib.sha256(open(path, "rb").read().replace(b"\r\n", b"\n")).hexdigest()
 
 

@@ -1,13 +1,13 @@
-"""Nối answer() với hàm truy hồi (Quân ráp retrieve() của TV3).
+"""Nối answer() với bước truy hồi (Quân gọi retrieve() của TV3).
 
     from src.answer.retriever import load_retriever
     r = load_retriever()          # r.name: "rerank" | "hybrid" | "dense" | "bm25"
     r.search("đăng ký khai sinh cần giấy tờ gì", k=5)   # [(chunk_id, score), ...]
 
-- mode "selected" (mặc định, configs/answer.yaml): retrieve() của TV3 theo configs/retrieval_selected.yaml.
-- mode "bm25": BM25 âm tiết (baseline TV1, Python thuần), dùng cho máy không có torch hoặc deploy nhẹ.
-- Nạp "selected" lỗi (chưa cài sentence-transformers, không tải được model) thì tự lùi về bm25 và ghi
-  lý do vào r.warning để web hiện cho người dùng biết đang chạy bản baseline.
+- mode "selected" (mặc định trong configs/answer.yaml): gọi retrieve() của TV3 theo configs/retrieval_selected.yaml.
+- mode "bm25": BM25 âm tiết của TV1, Python thuần, cho máy không có torch hoặc khi deploy cần nhẹ.
+- Nếu nạp "selected" bị lỗi (chưa cài sentence-transformers, không tải được model) thì tự chuyển về bm25 và ghi
+  lý do vào r.warning, web sẽ hiện ra cho người dùng biết đang chạy bản baseline.
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def load_retriever(cfg: dict | None = None, chunks: list[dict] | None = None) ->
         return baseline_retrieve(chunks)
     try:
         fn = _import(cfg["retriever"]["function"])
-        fn("khai sinh", 1)                       # nạp model ngay, lỗi thì biết luôn ở đây
+        fn("khai sinh", 1)                       # gọi thử để nạp model luôn, có lỗi thì bắt ở đây
         return Retriever(load_spec()["pipeline"], fn)
     except Exception as e:                       # ImportError, OSError khi tải model, ...
         r = baseline_retrieve(chunks)

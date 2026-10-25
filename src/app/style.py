@@ -1,12 +1,13 @@
-"""CSS cho app. Bố cục ghép 2 nguồn, giữ tông cam đất:
+"""CSS cho app. Bố cục bắt chước 2 trang, giữ tông cam đất:
 
 - Cổng Dịch vụ công quốc gia: đầu trang chữ có chân màu đỏ đất, thanh menu ngang, nút vàng nghệ,
   tiêu đề mục chữ hoa gạch chân.
 - Kho tri thức UEH (hotro.ueh.edu.vn): banner lớn, câu chào ở giữa, ô tìm kiếm bo tròn có ảnh bên
   cạnh, danh sách "chủ đề hữu ích" dạng mở/đóng, chân trang nhiều cột.
 
-Chỉ 3 ảnh (hoa sen, chim Lạc, hoa văn trống đồng), quản lý ở src/app/images.py. Streamlit không cho sửa HTML của widget, nên giao diện chỉnh bằng
-CSS nhắm vào class "st-key-<key>" (st.container(key=...)) và data-testid của tab, nút, ô nhập.
+Có 3 ảnh (hoa sen, chim Lạc, hoa văn trống đồng), quản lý trong src/app/images.py. Streamlit không cho sửa HTML
+của widget, nên phải chỉnh giao diện bằng CSS nhắm vào class "st-key-<key>" (st.container(key=...)) và
+data-testid của tab, nút, ô nhập.
 """
 from __future__ import annotations
 

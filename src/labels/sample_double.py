@@ -3,10 +3,10 @@
     python -m src.labels.sample_double --questions data/labels/questions.csv \
         --n-members 5 --seed 42 --frac 0.2 --out data/labels/label_assignments.csv
 
-- writer: lấy số TV từ cột annotator (ví dụ "TV2", "TV1-Duy ...").
-- labeler_1 (gán chính): TV(w+1), xoay vòng; người viết 5 thì TV1 gán.
-- labeler_2 (chỉ nhóm được chọn 20%): TV(w+2), khác người viết và labeler_1.
-- Chọn ngẫu nhiên theo nhóm, phân tầng theo loại câu gốc, mỗi loại ít nhất 1 nhóm.
+- writer: số TV lấy từ cột annotator (vd "TV2", "TV1-Duy ...").
+- labeler_1 (gán chính): TV(w+1), xoay vòng, người viết là TV5 thì TV1 gán.
+- labeler_2 (chỉ có ở 20% nhóm được chọn): TV(w+2), khác người viết và labeler_1.
+- Chọn random theo nhóm, phân tầng theo loại của câu gốc, loại nào cũng có ít nhất 1 nhóm.
 """
 from __future__ import annotations
 

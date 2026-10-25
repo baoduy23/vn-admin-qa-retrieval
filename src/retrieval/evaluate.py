@@ -1,11 +1,11 @@
 """Chạy baseline TF-IDF và BM25, mức âm tiết và mức từ (M01, mục 10 hướng dẫn TV1).
 
-Quy trình (đúng "khóa test" ở mục 9.1):
-  1. Lập chỉ mục trên TOÀN BỘ chunks (baseline không học từ câu hỏi).
-  2. Trên validation: thử lưới tham số (TF-IDF n-gram, BM25 k1 × b), chọn bộ có NDCG@10 cao nhất,
-     rồi chọn ngưỡng từ chối trên điểm top-1 (dưới ngưỡng thì từ chối), giữ từ chối nhầm
+Làm theo đúng quy định khoá test ở mục 9.1:
+  1. Lập chỉ mục trên toàn bộ chunks (baseline không học gì từ câu hỏi).
+  2. Trên validation: thử lưới tham số (TF-IDF n-gram, BM25 k1 × b), lấy bộ có NDCG@10 cao nhất,
+     rồi chọn ngưỡng từ chối theo điểm top-1 (dưới ngưỡng thì từ chối), sao cho từ chối nhầm
      câu hợp lệ không quá refusal.max_wrong_refusal.
-  3. Chỉ khi thêm --test mới chạy test, MỘT lần, với tham số và ngưỡng đã chốt.
+  3. Phải thêm --test thì mới chạy test, chỉ chạy 1 lần với tham số và ngưỡng đã chốt.
 
 Đầu vào : data/processed/chunks.jsonl, data/labels/{questions,qrels}.csv, data/splits/*_qgroups.csv,
           configs/retrieval_baseline.yaml
@@ -35,11 +35,11 @@ from src.retrieval.tfidf import TFIDF
 OUT = ROOT / "results/retrieval"
 NO_QRELS = {"out_of_scope", "unsupported"}
 TOP = 10
-FIELD = {"syllable": "chunk_text", "word": "text_seg"}       # mức token → cột văn bản của chunk
+FIELD = {"syllable": "chunk_text", "word": "text_seg"}       # mức token nào thì dùng cột văn bản nào của chunk
 TOKEN_VI = {"syllable": "âm tiết", "word": "từ"}
 
 
-# ---------- 1. Đọc dữ liệu ----------
+# 1. Đọc dữ liệu
 def read_csv(rel):
     with open(ROOT / rel, encoding="utf-8") as f:
         return list(csv.DictReader(f))
@@ -58,14 +58,14 @@ def load_data():
 
 
 def query_text(question, level):
-    """Câu hỏi phải qua đúng phép chuẩn hóa và đúng công cụ tách từ đã dùng cho chunk."""
+    """Câu hỏi phải chuẩn hoá và tách từ bằng đúng cách đã làm với chunk."""
     if level == "word":
         from src.data.chunk import segment            # import muộn: underthesea nạp lâu
         return segment(normalize_tone(question))
     return question
 
 
-# ---------- 2. Mô hình và lưới tham số ----------
+# 2. Mô hình và lưới tham số
 def param_grid(cfg):
     """Lưới thử trên validation: TF-IDF n-gram (1,1)/(1,2); BM25 k1 1.2–2.0 × b quanh 0.75."""
     for ng in ([1, 1], cfg["tfidf"]["ngram_range"]):
@@ -79,11 +79,11 @@ def build(model, params, docs, ids):
 
 
 def run(retriever, questions, level):
-    """question_id → top-10 [(chunk_id, score)]."""
+    """Trả về {question_id: top-10 [(chunk_id, score)]}."""
     return {q["question_id"]: retriever.search(query_text(q["question"], level), k=TOP) for q in questions}
 
 
-# ---------- 3. Chỉ số ----------
+# 3. Chỉ số
 def ranking_metrics(results, questions, qrels, ks):
     """R@k, MRR, NDCG@k trên các câu có nhãn (bỏ out_of_scope, unsupported)."""
     ranked = {q["question_id"]: [c for c, _ in results[q["question_id"]]] for q in questions}
@@ -91,7 +91,7 @@ def ranking_metrics(results, questions, qrels, ks):
 
 
 def refusal_rates(results, questions, threshold):
-    """Từ chối khi điểm top-1 < ngưỡng. Trả (tỉ lệ từ chối đúng câu không trả lời được,
+    """Điểm top-1 < ngưỡng thì từ chối. Trả về (tỉ lệ từ chối đúng câu không trả lời được,
     tỉ lệ từ chối nhầm câu hợp lệ)."""
     refuse = {q["question_id"]: (results[q["question_id"]][0][1] if results[q["question_id"]] else 0) < threshold
               for q in questions}
@@ -103,9 +103,9 @@ def refusal_rates(results, questions, threshold):
 
 
 def pick_threshold(results, questions, max_wrong):
-    """Ngưỡng từ chối đúng nhiều nhất mà từ chối nhầm câu hợp lệ không quá max_wrong (trên validation);
-    hòa thì lấy ngưỡng thấp hơn. Không giới hạn từ chối nhầm thì ngưỡng sẽ bị kéo lên rất cao
-    (từ chối gần hết) vì validation chỉ có vài câu out_of_scope / unsupported."""
+    """Chọn ngưỡng từ chối đúng nhiều nhất mà từ chối nhầm câu hợp lệ không quá max_wrong (trên validation),
+    hoà thì lấy ngưỡng thấp hơn. Nếu không giới hạn từ chối nhầm thì ngưỡng bị kéo lên rất cao
+    (từ chối gần hết), vì validation chỉ có vài câu out_of_scope / unsupported."""
     if not any(q["type"] in NO_QRELS for q in questions):
         return 0.0
     tops = sorted({r[0][1] for r in results.values() if r} | {0.0})
@@ -144,7 +144,7 @@ def write_csv(path, rows):
         w.writerows(rows)
 
 
-# ---------- 4. Chạy ----------
+# 4. Chạy
 def main(with_test=False):
     cfg = yaml.safe_load(open(ROOT / "configs/retrieval_baseline.yaml", encoding="utf-8"))
     ks = cfg["eval"]["ks"]
@@ -157,7 +157,7 @@ def main(with_test=False):
     for level in cfg["token_level"]:
         docs = [c[FIELD[level]] for c in chunks]
         val_q = qs["validation"]
-        best = {}                                          # model → (ndcg, mrr, params, run)
+        best = {}                                          # model: (ndcg, mrr, params, run)
         for model, params in param_grid(cfg):
             res = run(build(model, params, docs, ids), val_q, level)
             m = ranking_metrics(res, val_q, qrels, ks)
@@ -193,7 +193,7 @@ def main(with_test=False):
 
 
 def versions():
-    """Phiên bản thư viện + dấu vân tay dữ liệu (results/README.md yêu cầu ghi kèm mỗi kết quả)."""
+    """Phiên bản thư viện và mã băm dữ liệu, ghi kèm mỗi kết quả theo results/README.md."""
     import sklearn
     import underthesea
     m = ROOT / "data/dataset_manifest.json"

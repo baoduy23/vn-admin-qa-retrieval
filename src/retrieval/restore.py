@@ -1,21 +1,21 @@
-"""Khôi phục dấu cho câu gõ không dấu, chỉ để đưa vào bi-encoder / cross-encoder (M5, cải tiến).
+"""Khôi phục dấu cho câu gõ không dấu, chỉ dùng khi đưa vào bi-encoder / cross-encoder.
 
-Bi-encoder (bkai) và PhoRanker học trên văn bản có dấu, nên hiểu rất kém câu "dang ky khai sinh can giay
-to gi": câu không dấu trích đúng nguồn kém hẳn câu có dấu. BM25 không cần bước này vì câu không dấu đã
+Bi-encoder (bkai) và PhoRanker học trên văn bản có dấu nên hiểu rất kém câu kiểu "dang ky khai sinh can giay
+to gi", câu không dấu tìm đúng nguồn kém hẳn câu có dấu. BM25 thì không cần bước này vì câu không dấu đã
 tìm trên chỉ mục bỏ dấu (retrieve.SparseIndex).
 
-Cách làm, không cần model:
-  - Bảng n-gram 1–3 âm tiết lấy từ chunk_text của kho và câu hỏi tập train. Mỗi dạng bỏ dấu ánh xạ về
-    dạng có dấu gặp nhiều nhất: "dang ky" → "đăng ký".
-  - Duyệt trái sang phải, ưu tiên cụm dài (3 → 2 → 1) vì cụm dài ít nhập nhằng: "toi" đứng một mình có
-    thể là "tội" (chữ của luật), còn "toi muon" thì là "tôi muốn" (chữ của câu hỏi).
+Cách làm, không dùng model:
+  - Lập bảng n-gram 1–3 âm tiết từ chunk_text của kho và câu hỏi tập train. Mỗi dạng bỏ dấu map về dạng
+    có dấu gặp nhiều nhất, vd "dang ky" thành "đăng ký".
+  - Duyệt từ trái sang phải, ưu tiên cụm dài (3 rồi 2 rồi 1) vì cụm dài ít nhập nhằng hơn: "toi" đứng một mình
+    có thể là "tội" (chữ trong luật), còn "toi muon" thì là "tôi muốn" (chữ trong câu hỏi).
   - Âm tiết không có trong bảng thì giữ nguyên. Không ghép n-gram qua dấu câu.
-  - Chỉ lấy câu hỏi train, không lấy validation / test: bảng này là "dữ liệu huấn luyện", lấy câu
-    validation / test vào là lộ đáp án vào bước chọn tham số.
-Thêm vài từ viết tắt hay gặp (ko → không, dc → được, j → gì...), áp cho mọi câu khi bật công tắc. Cố ý
-không có "tp" (người ta gõ "tp" để chỉ "thành phố") và "bn" (vừa là "bạn" vừa là "bao nhiêu").
+  - Chỉ lấy câu hỏi train, không lấy validation / test, vì bảng này coi như dữ liệu huấn luyện, lấy câu
+    validation / test vào là lộ đáp án lúc chọn tham số.
+Có thêm vài từ viết tắt hay gặp (ko, dc, j...), bật công tắc thì áp cho mọi câu. Cố tình không thêm
+"tp" (người ta hay gõ "tp" là "thành phố") và "bn" (vừa là "bạn" vừa là "bao nhiêu").
 
-Bật / tắt: khóa restore_diacritics trong mục dense / rerank của configs/retrieval_selected.yaml, do
+Bật / tắt bằng khoá restore_diacritics trong mục dense / rerank của configs/retrieval_selected.yaml, do
 python -m src.retrieval.evaluate_models chọn trên validation (lưới query.restore_diacritics_grid).
 """
 from __future__ import annotations
@@ -77,7 +77,7 @@ class Restorer:
 
 
 def _keep_case(orig: str, restored: str) -> str:
-    if strip_accents(orig) == restored:          # chữ không có dấu nào để thêm (UBND, 2015): giữ nguyên
+    if strip_accents(orig) == restored:          # chữ không có dấu nào để thêm (UBND, 2015) thì giữ nguyên
         return orig
     if orig.isupper() and len(orig) > 1:
         return restored.upper()
@@ -107,7 +107,7 @@ def get_restorer() -> Restorer:
 
 
 def restore_query(question: str) -> str:
-    """clean_query + mở rộng từ viết tắt; câu không có chữ nào có dấu thì khôi phục dấu."""
+    """clean_query, mở rộng từ viết tắt, rồi nếu câu không có chữ nào có dấu thì khôi phục dấu."""
     q = clean_query(question)
     if not q:
         return q

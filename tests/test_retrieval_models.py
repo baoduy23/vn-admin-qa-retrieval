@@ -25,7 +25,7 @@ def bm25(chunks):
     return Pipeline(BM25_SPEC, load_config(), chunks)
 
 
-# ---------- chuẩn hóa câu hỏi (issue #7) ----------
+# chuẩn hóa câu hỏi (issue #7)
 def test_clean_query_tone_and_nfc():
     import unicodedata
     assert clean_query("thủ tục huỷ  việc nuôi con nuôi ") == "thủ tục hủy việc nuôi con nuôi"
@@ -37,7 +37,7 @@ def test_strip_accents_and_detect():
     assert has_diacritics("đăng ký") and not has_diacritics("dang ky ket hon")
 
 
-# ---------- gộp điểm ----------
+# gộp điểm
 def test_minmax_and_ranks():
     assert minmax([1, 3, 2]) == [0.0, 1.0, 0.5]
     assert minmax([2, 2]) == [0.0, 0.0]
@@ -51,7 +51,7 @@ def test_fuse_minmax_weights():
 
 
 def test_fuse_rrf_prefers_agreement():
-    a, b = [3.0, 2.0, 1.0], [1.0, 3.0, 2.0]          # chunk 1: hạng 2 và hạng 1 → cao nhất
+    a, b = [3.0, 2.0, 1.0], [1.0, 3.0, 2.0]          # chunk 1 có hạng 2 và hạng 1 nên cao nhất
     s = fuse([a, b], [0.5, 0.5], method="rrf")
     assert max(range(3), key=lambda i: s[i]) == 1
     with pytest.raises(ValueError):
@@ -62,7 +62,7 @@ def test_top_k_order():
     assert top_k(["a", "b", "c"], [0.2, 0.9, 0.5], 2) == [("b", 0.9), ("c", 0.5)]
 
 
-# ---------- retrieve() ----------
+# retrieve()
 def test_retrieve_interface(bm25, chunks):
     res = bm25.search("Hồ sơ đăng ký khai sinh gồm những giấy tờ gì?", k=5)
     assert len(res) == 5
@@ -91,13 +91,13 @@ def test_rerank_candidates_adds_bm25_misses():
     first = [0.9, 0.8, 0.1, 0.2]          # bước đầu: top-2 = a, b
     bm25 = [0.0, 5.0, 9.0, 0.0]           # BM25: c đứng đầu nhưng bước đầu bỏ sót
     assert rerank_candidates(ids, first, bm25, 2) == [("a", 0.9), ("b", 0.8)]
-    # c được thêm với điểm bước đầu của nó; b đã có; a, d điểm BM25 = 0 nên không thêm
+    # c được thêm với điểm bước đầu của nó, b có sẵn rồi, a và d điểm BM25 = 0 nên không thêm
     assert rerank_candidates(ids, first, bm25, 2, extra_bm25=3) == [("a", 0.9), ("b", 0.8), ("c", 0.1)]
 
 
 def test_rerank_run_scores_each_pair_once():
     class Fake:
-        """Giả Reranker (không import rerank.py vì nó cần numpy / torch): chỉ có scores + rerank."""
+        """Reranker giả (không import rerank.py vì file đó cần numpy / torch), chỉ có scores và rerank."""
         def __init__(self):
             self.calls = []
 
@@ -106,7 +106,7 @@ def test_rerank_run_scores_each_pair_once():
 
         def scores(self, question, chunk_ids, restore=None):
             self.calls.append(list(chunk_ids))
-            return [float(len(c)) for c in chunk_ids]     # chunk id dài hơn = điểm cao hơn
+            return [float(len(c)) for c in chunk_ids]     # chunk id dài hơn thì điểm cao hơn
 
     rr, cache, qs = Fake(), {}, [{"question_id": "Q1", "question": "x"}]
     small = rerank_run(rr, {"Q1": [("a", 1.0), ("bb", 0.5)]}, qs, 0.0, cache)
@@ -115,9 +115,9 @@ def test_rerank_run_scores_each_pair_once():
     assert [c for c, _ in small["Q1"]] == ["bb", "a"] and big["Q1"][0][0] == "ccc"
 
 
-# ---------- điểm cross-encoder: minmax / raw ----------
+# điểm cross-encoder: minmax / raw
 def _fake_reranker(scores_by_chunk, activation="Sigmoid", **cfg):
-    """Reranker thật nhưng model giả: không nạp sentence-transformers, chỉ kiểm phần trộn điểm."""
+    """Reranker thật nhưng model giả, không nạp sentence-transformers, chỉ test phần trộn điểm."""
     from src.retrieval.rerank import Reranker
 
     class Act:
@@ -164,7 +164,7 @@ def test_reranker_restores_unaccented_question():
     assert seen == ["đăng ký khai sinh", "dang ky khai sinh"]
 
 
-# ---------- khôi phục dấu ----------
+# khôi phục dấu
 def test_restorer_prefers_longer_ngrams_and_keeps_case():
     from src.retrieval.restore import Restorer
     r = Restorer(["Người phạm tội.", "Tội phạm.", "Tôi muốn đăng ký khai sinh."])
@@ -196,7 +196,7 @@ def test_invalid_pipeline_raises(chunks):
         Pipeline({"pipeline": "abc"}, load_config(), chunks)
 
 
-# ---------- câu hỏi tương tự ----------
+# câu hỏi tương tự
 def _split_of():
     out = {}
     for s in ("train", "validation", "test"):

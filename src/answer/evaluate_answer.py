@@ -1,20 +1,20 @@
-"""Chọn ngưỡng từ chối τ trên validation và đánh giá câu trả lời (Quân, M6).
+"""Chọn ngưỡng từ chối τ trên validation và đánh giá câu trả lời (Quân).
 
     python -m src.answer.evaluate_answer              # validation: chọn τ, ghi configs/answer_selected.yaml
     python -m src.answer.evaluate_answer --live selected   # phần câu nhiều ý chạy bằng pipeline TV3 (cần torch)
-    python -m src.answer.evaluate_answer --test       # TV2 chạy MỘT lần ở cuối, với τ đã chốt
+    python -m src.answer.evaluate_answer --test       # chạy 1 lần duy nhất ở cuối, với τ đã chốt
 
-1. Ngưỡng τ: đọc file kết quả chạy validation của TV3 (results/retrieval/models/runs/<pipeline>_validation.csv,
-   top-20 kèm điểm) nên không cần nạp model. Từ chối khi điểm top-1 < τ; chọn τ từ chối đúng nhiều nhất
-   (out_of_scope + unsupported) mà từ chối nhầm câu hợp lệ ≤ max_wrong_refusal, hòa lấy τ thấp hơn
-   (giống pick_threshold của TV1). Làm 2 lần: chỉ τ, và τ + kiểm tra căn cứ con số (intent.has_evidence).
-2. Câu trả lời (validation, τ đã chọn): tỉ lệ trả lời, đúng nguồn (đoạn trích nằm trong qrels), token F1
-   so với answer_text, so F1 giữa "trích cả đoạn" và "trích dòng khớp nhất" (template.best_quote).
-3. Câu nhiều ý: tách / không tách, đo R@5, R@10, NDCG@5 trên câu multi_intent của train + validation
-   (không dùng test), cộng tỉ lệ tách nhầm trên câu một ý. Phần này phải truy hồi lại từng ý nên chạy trực
-   tiếp; mặc định BM25 (máy nào cũng chạy được), --live selected để dùng pipeline TV3.
+1. Ngưỡng τ: đọc file kết quả validation TV3 đã chạy sẵn (results/retrieval/models/runs/<pipeline>_validation.csv,
+   top-20 kèm điểm) nên khỏi nạp model. Điểm top-1 < τ thì từ chối. Chọn τ từ chối đúng nhiều nhất
+   (out_of_scope + unsupported) với điều kiện từ chối nhầm câu hợp lệ không quá max_wrong_refusal, hòa thì
+   lấy τ thấp hơn (giống pick_threshold của TV1). Chạy 2 lần: chỉ có τ, và τ cộng kiểm tra con số (intent.has_evidence).
+2. Câu trả lời (validation, τ đã chọn): tỉ lệ trả lời, đúng nguồn (đoạn trích có trong qrels), token F1
+   với answer_text, và so F1 giữa trích cả đoạn với trích dòng khớp nhất (template.best_quote).
+3. Câu nhiều ý: so tách với không tách bằng R@5, R@10, NDCG@5 trên câu multi_intent của train + validation
+   (không dùng test), thêm tỉ lệ tách nhầm câu một ý. Phần này phải truy hồi lại từng ý nên chạy trực tiếp,
+   mặc định bằng BM25 cho máy nào cũng chạy được, thêm --live selected để dùng pipeline TV3.
 4. Câu thiếu thông tin: precision / recall của intent.is_underspecified trên train + validation.
-Kết quả: results/answer/answer_report.md, threshold_grid.csv, <split>_answers.csv.
+Ghi ra results/answer/answer_report.md, threshold_grid.csv, <split>_answers.csv.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ NO_ANSWER = {"out_of_scope", "unsupported"}
 PIPELINES = ("rerank", "hybrid", "dense", "bm25")
 
 
-# ------------------------------------------------------------------ dữ liệu
+# dữ liệu
 def read_csv(path):
     with open(path, encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
@@ -66,7 +66,7 @@ def load_run(pipeline: str, split: str) -> dict[str, list[tuple[str, float]]]:
 
 
 class RunRetriever:
-    """Giả retrieve(): trả kết quả có sẵn trong file run theo đúng câu hỏi (không nạp model)."""
+    """retrieve() giả: lấy kết quả có sẵn trong file run theo câu hỏi, không cần nạp model."""
 
     def __init__(self, name, run, questions):
         self.qid_of = {q["question"].strip(): q["question_id"] for q in questions}
@@ -77,7 +77,7 @@ class RunRetriever:
         return self.run.get(self.qid_of.get(question.strip(), ""), [])[:k]
 
 
-# ------------------------------------------------------------------ chỉ số
+# chỉ số
 TOKEN = re.compile(r"\w+", re.UNICODE)
 
 
@@ -102,7 +102,7 @@ def run_answers(engine: AnswerEngine, questions, qrels) -> list[dict]:
     rows = []
     for q in questions:
         r = engine.answer(q["question"])
-        # bị lọc ngoài phạm vi (hoặc câu rỗng) thì không có ý nào được truy hồi
+        # câu bị lọc ngoài phạm vi (hoặc câu rỗng) thì không có ý nào được truy hồi
         p = r["parts"][0] if r["parts"] else dict(chunk_id=None, quote_lines=[], top_score=0.0)
         top = engine.by_id.get(p["chunk_id"]) if p["chunk_id"] else None
         rel = qrels.get(q["question_id"], {})
@@ -134,9 +134,9 @@ def answer_metrics(rows) -> dict:
     }
 
 
-# ------------------------------------------------------------------ 1. chọn τ
+# 1. chọn τ
 def pick_threshold(engine, run, questions, max_wrong):
-    """Trả (τ tốt nhất, bảng lưới). Ứng viên là trung điểm giữa các điểm top-1 trên validation."""
+    """Trả về (τ tốt nhất, bảng lưới). τ thử là trung điểm giữa các điểm top-1 trên validation."""
     tops = sorted({v[0][1] for v in run.values() if v} | {0.0})
     cands = [0.0] + [(a + b) / 2 for a, b in zip(tops, tops[1:])]
     grid, ok = [], []
@@ -150,7 +150,7 @@ def pick_threshold(engine, run, questions, max_wrong):
     return (max(ok)[2] if ok else 0.0), grid
 
 
-# ------------------------------------------------------------------ 3. câu nhiều ý
+# 3. câu nhiều ý
 def multi_intent_eval(retriever: Retriever, questions, qrels, chunks):
     cfg = load_answer_config()
     rows = []
@@ -166,7 +166,7 @@ def multi_intent_eval(retriever: Retriever, questions, qrels, chunks):
             r5.append(recall_at_k(ranked, rel, 5))
             r10.append(recall_at_k(ranked, rel, 10))
             n5.append(ndcg_at_k(ranked, rel, 5))
-            # đoạn được TRÍCH trong câu trả lời (1 đoạn / ý): bao nhiêu đoạn đúng, phủ bao nhiêu đoạn rel 2
+            # đoạn được trích trong câu trả lời (mỗi ý 1 đoạn): đúng bao nhiêu, phủ được bao nhiêu đoạn rel 2
             quoted = {p["chunk_id"] for p in res["parts"] if p["chunk_id"]}
             gold2 = {c for c, v in rel.items() if v == 2} or {c for c, v in rel.items() if v > 0}
             cover.append(len(quoted & gold2) / len(gold2))
@@ -192,7 +192,7 @@ def underspecified_eval(questions):
                 n_pred=pred, n_gold=gold)
 
 
-# ------------------------------------------------------------------ ghi file
+# ghi file
 def write_csv(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as f:
@@ -202,7 +202,7 @@ def write_csv(path, rows):
 
 
 def fmt(x, nd=2):
-    return "–" if x != x else f"{x:.{nd}f}"   # NaN → –
+    return "–" if x != x else f"{x:.{nd}f}"   # NaN thì in "–"
 
 
 def main(with_test=False, live="bm25"):
@@ -229,8 +229,8 @@ def main(with_test=False, live="bm25"):
             results.append(dict(pipeline=p, evidence_check=ev, threshold=tau, **answer_metrics(rows)))
             answer_rows[(p, ev)] = rows
 
-    # mỗi pipeline: bật kiểm tra căn cứ nếu trên validation nó không làm giảm từ chối đúng và từ chối nhầm
-    # vẫn trong trần max_wrong_refusal; không thì tắt và dùng τ của bản "chỉ ngưỡng"
+    # từng pipeline: bật kiểm tra căn cứ nếu trên validation nó không làm giảm từ chối đúng và từ chối nhầm
+    # vẫn không quá max_wrong_refusal, còn không thì tắt và lấy τ của bản chỉ có ngưỡng
     use_ev, thresholds = {}, {}
     for p in pipelines:
         r = {x["evidence_check"]: x for x in results if x["pipeline"] == p}

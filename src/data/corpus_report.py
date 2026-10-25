@@ -29,7 +29,7 @@ def read_jsonl(path):
 
 
 def dieu_table(units_cur):
-    """1 dòng / Điều: số khoản, số từ (sau tách từ), bị sửa bao nhiêu unit, có bị bãi bỏ không."""
+    """Mỗi Điều 1 dòng: số khoản, số từ (sau khi tách từ), bao nhiêu unit bị sửa, có bị bãi bỏ không."""
     rows = {}
     for u in units_cur:
         if u["level"] == "phu_luc" or u["dieu"] is None:
@@ -56,7 +56,7 @@ def dieu_numbering_ok(dieus):
 
 
 def md_table(df):
-    """DataFrame → bảng Markdown (không cần thư viện tabulate)."""
+    """Đổi DataFrame thành bảng Markdown, khỏi cần cài tabulate."""
     cols = list(df.columns)
     lines = ["| " + " | ".join(map(str, cols)) + " |", "|" + "---|" * len(cols)]
     for _, r in df.iterrows():

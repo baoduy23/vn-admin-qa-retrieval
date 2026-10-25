@@ -5,8 +5,8 @@
           data/processed/amendments_log.csv   (mỗi op 1 dòng: áp được không, đụng mấy unit)
 
 5 loại op (giải thích ở đầu amendments.yaml): replace, insert, repeal, remove_phrase, rename.
-Op áp theo thứ tự ngày hiệu lực; op nào lỗi thì ghi vào log và dừng, không ghi units_current.
-Unit bị bãi bỏ vẫn giữ trong file (status=repealed), bước chunk mới bỏ ra.
+Op được áp theo thứ tự ngày hiệu lực. Op nào lỗi thì ghi log rồi dừng, không ghi units_current.
+Unit bị bãi bỏ vẫn để trong file (status=repealed), tới bước chunk mới bỏ ra.
 
 Chạy từ gốc repo:  python -m src.data.apply_amendments
 """
@@ -20,33 +20,33 @@ import yaml
 from src.data.parse_law import ROOT, RE_MUC, RE_DIEU, RE_KHOAN, RE_DIEM, RE_QUOTE_END
 
 
-# ---------- 1. Đọc dữ liệu ----------
+# 1. Đọc dữ liệu
 def load_units(path):
     """Đọc units.jsonl của parse_law, thêm 3 cột theo dõi hiệu lực."""
     units = [json.loads(l) for l in open(path, encoding="utf-8")]
     for u in units:
         u["status"] = "active"          # active | repealed
         u["amended_by"] = []            # danh sách id op đã đụng vào unit này
-        u["effective_from"] = None      # ngày hiệu lực của lần sửa gần nhất (None = bản gốc)
+        u["effective_from"] = None      # ngày hiệu lực của lần sửa gần nhất (None là bản gốc)
     return units
 
 
 def load_ops(path):
     """Đọc amendments.yaml, sắp theo ngày hiệu lực (07/2025 phải áp trước 18/2026)."""
     ops = yaml.safe_load(open(path, encoding="utf-8"))
-    # sort theo ngày hiệu lực; sorted() giữ nguyên thứ tự trong file khi trùng ngày
+    # sort theo ngày hiệu lực, trùng ngày thì sorted() giữ thứ tự như trong file
     return sorted(ops, key=lambda o: str(o["effective_date"]))
 
 
-# ---------- 2. Tìm unit ----------
+# 2. Tìm unit
 def same(u, doc, dieu, khoan=None, diem=None):
-    """Unit u có đúng địa chỉ (văn bản, Điều, Khoản, Điểm) không. khoan/diem = None nghĩa là cấp Điều/Khoản."""
+    """Unit u có đúng địa chỉ (văn bản, Điều, Khoản, Điểm) không. khoan/diem là None tức là cấp Điều/Khoản."""
     return (u["doc_id"] == doc and u["dieu"] == dieu
             and u["khoan"] == khoan and u["diem"] == diem)
 
 
 def find_one(units, ref):
-    """Vị trí đúng 1 unit (doc, dieu, khoan, diem). Không có → None."""
+    """Vị trí của đúng 1 unit (doc, dieu, khoan, diem), không có thì trả None."""
     hits = [i for i, u in enumerate(units)
             if same(u, ref["doc"], ref["dieu"], ref.get("khoan"), ref.get("diem"))]
     return hits[0] if hits else None
@@ -60,7 +60,7 @@ def span(units, doc, dieu, khoan=None):
     return idx
 
 
-# ---------- 3. Lấy đoạn trích “...” trong unit nguồn ----------
+# 3. Lấy đoạn trích “...” trong unit nguồn
 def quoted_lines(text):
     """Các dòng nằm trong ngoặc kép, đã bỏ “ ở đầu và ” ở cuối."""
     out, inside = [], False
@@ -80,8 +80,8 @@ def quoted_lines(text):
 
 
 def pick_khoan(lines, khoan):
-    """Đoạn trích có nhiều khoản ("1. ..." "2. ...") → chỉ lấy khoản trùng target.
-    Đoạn trích chỉ có 1 khoản hoặc không đánh số → trả nguyên."""
+    """Đoạn trích có nhiều khoản ("1. ..." "2. ...") thì chỉ lấy khoản trùng target.
+    Chỉ có 1 khoản hoặc không đánh số thì trả nguyên."""
     starts = [i for i, l in enumerate(lines) if RE_KHOAN.match(l)]
     if khoan is None or len(starts) <= 1:
         return lines
@@ -92,9 +92,9 @@ def pick_khoan(lines, khoan):
     raise ValueError(f"không thấy khoản {khoan} trong đoạn trích")
 
 
-# ---------- 4. Tách đoạn trích thành unit (giống parse_law nhưng gọn) ----------
+# 4. Tách đoạn trích thành unit (giống parse_law nhưng gọn)
 def split_block(lines, base):
-    """lines = đoạn trích; base = unit mẫu để lấy chương/mục/điều.
+    """lines là đoạn trích, base là unit mẫu để lấy chương/mục/điều.
     Trả về list unit mới theo đúng cấu trúc của units.jsonl."""
     ctx = {k: base.get(k) for k in ("doc_id", "chuong", "chuong_ten", "muc", "muc_ten",
                                     "dieu", "dieu_ten", "khoan", "diem")}
@@ -131,7 +131,7 @@ def split_block(lines, base):
     return out
 
 
-# ---------- 5. Các thao tác ----------
+# 5. Các thao tác
 def norm(s):
     """NFC để cụm từ trong yaml khớp với text trong docx (docx có thể dùng dấu tổ hợp)."""
     return unicodedata.normalize("NFC", s)
@@ -145,7 +145,7 @@ def stamp(u, op):
 
 
 def new_units(lines, base, op, history=()):
-    """history = các op đã sửa unit cũ trước đó, giữ lại để biết unit bị sửa mấy lần."""
+    """history là các op đã sửa unit cũ trước đó, giữ lại để biết unit bị sửa mấy lần."""
     out = split_block(lines, base)
     for u in out:
         u.update(status="active", amended_by=list(history), effective_from=None)
@@ -154,7 +154,7 @@ def new_units(lines, base, op, history=()):
 
 
 def must_find(units, ref):
-    """find_one nhưng báo lỗi rõ ràng khi không có (thay vì lỗi TypeError khó hiểu)."""
+    """Như find_one nhưng không tìm thấy thì báo lỗi rõ ràng, chứ để TypeError thì khó hiểu."""
     i = find_one(units, ref)
     if i is None:
         raise ValueError(f"không thấy unit đích {ref}")
@@ -231,7 +231,7 @@ def do_rename(units, op):
 
 
 def apply_op(units, op):
-    """Kiểm nguồn/đích tồn tại rồi gọi hàm theo loại op. Trả (units mới, số unit bị đụng)."""
+    """Kiểm tra nguồn/đích có tồn tại không rồi gọi hàm theo loại op. Trả về (units mới, số unit bị đụng)."""
     t = op["target"]
     if op["op"] in ("replace", "insert"):
         si = find_one(units, op["source"])
@@ -258,7 +258,7 @@ def apply_op(units, op):
     raise ValueError(f"op lạ: {op['op']}")
 
 
-# ---------- 6. Chạy ----------
+# 6. Chạy
 def main():
     units = load_units(ROOT / "data/processed/units.jsonl")
     ops = load_ops(ROOT / "data/raw/amendments.yaml")

@@ -1,25 +1,24 @@
-"""Hàm answer() (Quân, M6): câu hỏi → câu trả lời trích nguyên văn kèm nguồn, hoặc từ chối.
+"""answer(): nhận câu hỏi, trả câu trả lời trích nguyên văn luật kèm nguồn, hoặc từ chối. Phần của Quân.
 
     from src.answer import answer
     r = answer("Đăng ký khai sinh cần giấy tờ gì?")
     r["answer"]      # 'Theo Luật Hộ tịch 60/2014/QH13, Điều 16 Khoản 1: "..."'
     r["sources"]     # top-k đoạn luật: tên văn bản, Điều/Khoản, link, điểm, đoạn trích tô sáng
-    r["refused"]     # True khi không đủ căn cứ
+    r["refused"]     # True nếu không đủ căn cứ
 
-Các bước:
-  0. Câu hỏi về lĩnh vực khác (hộ chiếu, đất đai, thuế...) mà không nhắc việc hộ tịch nào → từ chối ngay
-     (out_of_scope, intent.out_of_scope_topic), không truy hồi.
-     Câu không có âm tiết nào xuất hiện trong kho ("hello world", gõ bừa) → từ chối ngay (no_overlap).
-     Cần lớp này vì điểm rerank đã minmax trong tập ứng viên: hybrid và PhoRanker cùng chọn một đoạn
-     là top-1 được 1.0, vượt τ dù đoạn đó chẳng liên quan gì.
-  1. Tách câu nhiều ý (intent.split_multi_intent), mỗi ý truy hồi riêng bằng retrieve() của TV3.
-  2. Mỗi ý: điểm top-1 < τ → từ chối (low_score). τ chọn trên validation (evaluate_answer.py).
-  3. Câu hỏi đòi con số (tiền, phạt, tuổi, thời hạn) mà top evidence_k đoạn không có con số đó
-     → từ chối (no_evidence), chống trả lời không có căn cứ cho câu unsupported.
-  4. Còn lại: chọn khoản/điểm khớp nhất trong đoạn top-1, đưa vào mẫu
-     Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>".
-  5. Kèm câu hỏi tương tự (similar_questions của TV3) và gợi ý khi câu thiếu thông tin.
-Cả câu chỉ bị từ chối khi MỌI ý đều bị từ chối.
+Thứ tự xử lý:
+- Hỏi lĩnh vực khác (hộ chiếu, đất đai, thuế...) mà không nhắc việc hộ tịch nào thì từ chối luôn (out_of_scope),
+  khỏi truy hồi. Câu không có âm tiết nào trong kho ("hello world", gõ bừa) cũng từ chối luôn (no_overlap).
+  Phải chặn trước vì khi điểm rerank chuẩn hoá minmax trong tập ứng viên thì đoạn mà hybrid và PhoRanker
+  cùng xếp đầu được 1.0, vượt τ dù chẳng liên quan.
+- Câu nhiều ý thì tách ra (intent.split_multi_intent), mỗi ý gọi retrieve() của TV3 riêng.
+- Điểm top-1 dưới τ thì từ chối (low_score). τ chọn trên validation trong evaluate_answer.py.
+- Hỏi con số (tiền, phạt, tuổi, thời hạn) mà evidence_k đoạn đầu không có số đó thì cũng từ chối
+  (no_evidence), để khỏi trả lời bừa câu unsupported.
+- Còn lại thì lấy khoản/điểm khớp nhất trong đoạn top-1, ghép vào mẫu
+  Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>".
+- Kèm câu hỏi tương tự (similar_questions của TV3) và gợi ý nếu câu hỏi thiếu thông tin.
+Cả câu chỉ bị từ chối khi ý nào cũng bị từ chối.
 """
 from __future__ import annotations
 
@@ -60,8 +59,8 @@ REFUSAL_HINT = ("Bạn có thể hỏi lại cụ thể hơn, hoặc liên hệ 
 
 
 def load_thresholds() -> dict:
-    """τ theo từng loại pipeline: ưu tiên bản Quân chọn trên validation (answer_selected.yaml),
-    chưa có thì dùng ngưỡng TV3 đã chọn cho bước truy hồi (retrieval_selected.yaml)."""
+    """Lấy τ theo từng pipeline. Có answer_selected.yaml (Quân chọn trên validation) thì dùng,
+    chưa có thì lấy ngưỡng TV3 chọn lúc truy hồi (retrieval_selected.yaml)."""
     th = dict(load_spec().get("thresholds", {}))
     if SELECTED.exists():
         th.update(yaml.safe_load(open(SELECTED, encoding="utf-8")).get("thresholds", {}))
@@ -80,8 +79,8 @@ class AnswerEngine:
     def __init__(self, cfg: dict | None = None, retriever: Retriever | None = None,
                  chunks: list[dict] | None = None, similar=None, threshold: float | None = None,
                  line_scorer=None):
-        """Tham số retriever / similar / threshold / line_scorer dùng khi đánh giá hoặc test (truyền hàm giả).
-        Truyền retriever mà không truyền line_scorer thì chọn dòng bằng IDF (evaluate_answer không cần model)."""
+        """retriever, similar, threshold, line_scorer chỉ truyền vào lúc đánh giá hoặc test (hàm giả).
+        Có retriever mà không có line_scorer thì chọn dòng bằng IDF, nên evaluate_answer không cần nạp model."""
         self.cfg = cfg or load_answer_config()
         self.chunks = chunks if chunks is not None else load_chunks()
         self.by_id = {c["chunk_id"]: c for c in self.chunks}
@@ -97,7 +96,7 @@ class AnswerEngine:
             line_scorer = load_line_scorer(self.cfg)
         self.line_scorer = line_scorer
 
-    # ------------------------------------------------------------ câu hỏi tương tự
+    # câu hỏi tương tự
     def similar(self, question: str) -> list[dict]:
         if self._similar is None:
             self._similar = self._load_similar()
@@ -107,7 +106,7 @@ class AnswerEngine:
             return []
 
     def _load_similar(self):
-        """Pipeline có bi-encoder thì dùng similar_questions của TV3 (cosine); bản BM25 thì Dice âm tiết."""
+        """Pipeline có bi-encoder thì dùng similar_questions của TV3 (cosine), bản BM25 thì dùng Dice âm tiết."""
         from src.retrieval import similar as sim
         if self.retriever.name in ("dense", "hybrid", "rerank") and not self.retriever.warning:
             return lambda q, k: sim.similar_questions(q, k=k)
@@ -115,13 +114,13 @@ class AnswerEngine:
         min_score = load_config()["similar_questions"]["min_score_lexical"]
 
         def lexical(q, k):
-            # Dice tính cả hư từ ("mất bao lâu") nên lọc thêm: phải chung ≥ 2 âm tiết nội dung
+            # Dice tính cả hư từ ("mất bao lâu") nên lọc thêm, phải chung ít nhất 2 âm tiết nội dung
             mine = set(content_syllables(q))
             hits = idx.search(q, k=3 * k, min_score=min_score)
             return [h for h in hits if len(mine & set(content_syllables(h["question"]))) >= 2][:k]
         return lexical
 
-    # ------------------------------------------------------------ một ý
+    # trả lời một ý
     def answer_part(self, question: str, k: int) -> dict:
         hits = self.retriever.search(question, max(k, self.cfg.get("evidence_k", 3)))
         top_score = hits[0][1] if hits else 0.0
@@ -140,19 +139,19 @@ class AnswerEngine:
         return part
 
     def in_corpus(self, question: str) -> bool:
-        """Có ít nhất một âm tiết của câu hỏi xuất hiện trong kho (so bản bỏ dấu), tức BM25 top-1 > 0."""
+        """True nếu câu hỏi có ít nhất 1 âm tiết nằm trong kho (so bản bỏ dấu), tức BM25 top-1 > 0."""
         return any(t in self.vocab for t in tokenize(strip_accents(question)))
 
     def out_of_scope_part(self, question: str, head: str = "") -> dict | None:
-        """Lọc phạm vi cho từng ý của câu nhiều ý: "Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?" qua được
-        bước lọc cả câu (có "khai tử") nhưng ý 2 hỏi đất đai, nên từ chối riêng ý đó thay vì trích luật hộ tịch.
-        Chỉ xét chữ của chính ý đó, bỏ phần chủ đề (head) split_multi_intent ghép từ vế đầu: "Chồng tôi quốc tịch
-        Úc, nộp gì" có "quốc tịch" là do ghép, ý thật là "nộp gì" (hồ sơ khai tử)."""
+        """Lọc phạm vi cho từng ý. Ví dụ "Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?" qua được bước
+        lọc cả câu (vì có "khai tử") nhưng ý 2 là đất đai, nên từ chối riêng ý 2 chứ không trích luật hộ tịch.
+        Chỉ xét chữ của chính ý đó, bỏ phần chủ đề (head) mà split_multi_intent ghép từ vế đầu. Ví dụ
+        "Chồng tôi quốc tịch Úc, nộp gì": chữ "quốc tịch" là do ghép vào, ý thật là "nộp gì" (hồ sơ khai tử)."""
         own = question[len(head):].strip() if head and question.startswith(head + " ") else question
         topic = out_of_scope_topic(own) if self.cfg.get("out_of_scope_filter", True) else None
         if not topic:
             return None
-        # hiện đúng chữ người dùng gõ cho ý này, không kèm chủ đề ghép ("Khai tử cho bố Sổ đỏ ...")
+        # hiện đúng chữ người dùng gõ, không kèm chủ đề ghép vào ("Khai tử cho bố Sổ đỏ ...")
         return dict(question=own, hits=[], top_score=0.0, refused=True, reason="out_of_scope",
                     answer="", quote_lines=[], chunk_id=None, expected_type=None, out_of_scope_topic=topic)
 
@@ -161,13 +160,13 @@ class AnswerEngine:
         label = TYPE_LABEL.get(part.get("expected_type") or "", "thông tin")
         return REFUSAL_TEXT[part["reason"]].format(label=label, topic=part.get("out_of_scope_topic") or "")
 
-    # ------------------------------------------------------------ cả câu
+    # trả lời cả câu
     def answer(self, question: str, k: int | None = None) -> dict:
         k = k or self.cfg.get("top_k", 5)
         q = clean_query(question).strip()
         base = dict(question=q, pipeline=self.retriever.name, threshold=self.threshold, warning=self.warning)
-        # không có chữ cái hay chữ số nào (chỉ emoji, dấu câu, "___"): coi như chưa nhập câu hỏi, khỏi truy hồi.
-        # Trước đây câu kiểu này rơi xuống lớp no_overlap (báo "tiếng nước ngoài"), tắt lớp đó thì còn đi truy hồi.
+        # không có chữ hay số nào (chỉ emoji, dấu câu, "___") thì coi như chưa nhập, khỏi truy hồi.
+        # Hồi trước câu kiểu này rơi xuống no_overlap (báo "tiếng nước ngoài"), mà tắt no_overlap thì nó lại đi truy hồi.
         if not re.search(r"[^\W_]", q):
             return dict(base, refused=True, reason="empty", answer=REFUSAL_TEXT["empty"], parts=[],
                         sources=[], similar_questions=[], underspecified=False, notes=[], scores={})
@@ -190,7 +189,7 @@ class AnswerEngine:
                  for i, s in enumerate(sub_questions)]
         refused = all(p["refused"] for p in parts)
 
-        # câu trả lời: một ý → 1 đoạn; nhiều ý → đánh số từng ý
+        # một ý thì trả 1 đoạn, nhiều ý thì đánh số từng ý
         if len(parts) == 1:
             p = parts[0]
             text = self.refusal_text(p) if p["refused"] else p["answer"]
@@ -216,7 +215,7 @@ class AnswerEngine:
         )
 
     def collect_sources(self, parts: list[dict], k: int, question: str) -> list[dict]:
-        """Ghép top-k của các ý xen kẽ nhau (ý 1 hạng 1, ý 2 hạng 1, ý 1 hạng 2, ...), bỏ trùng."""
+        """Ghép top-k của các ý xen kẽ (ý 1 hạng 1, ý 2 hạng 1, ý 1 hạng 2, ...), bỏ đoạn trùng."""
         quote_of = {p["chunk_id"]: p["quote_lines"] for p in parts if p["chunk_id"]}
         seen, out = set(), []
         for rank in range(max(len(p["hits"]) for p in parts)):
@@ -241,8 +240,8 @@ class AnswerEngine:
         return out
 
     def notes(self, parts: list[dict], sources: list[dict]) -> list[dict]:
-        """Lưu ý pháp lý tự động: đoạn trích còn ghi "cấp huyện" thì dẫn Nghị định 120/2025/NĐ-CP
-        (chuyển nhiệm vụ cấp huyện về cấp xã), trích nguyên văn câu đầu của khoản đó."""
+        """Thêm lưu ý pháp lý. Đoạn trích còn ghi "cấp huyện" thì dẫn thêm Nghị định 120/2025/NĐ-CP
+        (chuyển việc của cấp huyện về cấp xã), trích nguyên văn câu đầu của khoản đó."""
         out = []
         used = [s for s in sources if s["used_in_answer"]]
         if any("cap huyen" in strip_accents(" ".join(s["quote_lines"])) for s in used):
@@ -269,12 +268,12 @@ def get_engine() -> AnswerEngine:
 
 def answer(question: str, k: int | None = None) -> dict:
     """{question, answer, refused, reason, parts[], sources[], similar_questions[], underspecified,
-    notes[], scores, pipeline}. Xem docstring đầu file."""
+    notes[], scores, pipeline}. Giải thích ở đầu file."""
     return get_engine().answer(question, k)
 
 
 def suggest_procedures(question: str) -> list[str]:
-    """Gợi ý việc hộ tịch để người dùng hỏi rõ hơn (dùng khi underspecified)."""
+    """Gợi ý vài việc hộ tịch để người dùng hỏi lại cho rõ (dùng khi câu hỏi underspecified)."""
     from src.answer.intent import PROCEDURE_NAMES
     have = set(find_procedures(question))
     return [p for p in PROCEDURE_NAMES if p not in have][:6]

@@ -1,11 +1,11 @@
-"""Chia câu hỏi thành train / validation / test theo NHÓM, phân tầng theo loại câu.
+"""Chia câu hỏi thành train / validation / test theo nhóm câu hỏi, phân tầng theo loại câu.
 
     python -m src.data.split            (seed, tỉ lệ lấy trong configs/split.yaml)
 
-- Đơn vị chia là question_group_id: mọi cách hỏi của một ý nằm cùng một tập.
-- Loại của nhóm = type của câu gốc (câu có question_id nhỏ nhất trong nhóm).
-- Mỗi loại được chia ~40/20/40; hoán đổi nhóm cùng loại để số CÂU mỗi tập sát
-  120/60/120 (hoặc 40%/20%/40% tổng số câu nếu khác 300).
+- Chia theo question_group_id, nên các cách hỏi khác nhau của cùng một ý luôn nằm chung một tập.
+- Loại của nhóm lấy theo type của câu gốc (câu có question_id nhỏ nhất trong nhóm).
+- Mỗi loại chia khoảng 40/20/40, sau đó hoán đổi nhóm cùng loại để số câu mỗi tập gần
+  120/60/120 (hoặc 40%/20%/40% tổng số câu nếu không phải 300 câu).
 - Ghi train_qgroups.csv, validation_qgroups.csv, test_qgroups.csv vào data/splits/.
 Chạy lại với cùng dữ liệu và seed thì ra đúng kết quả cũ.
 """
@@ -31,7 +31,7 @@ def load_groups(path: Path) -> dict[str, dict]:
     groups: dict[str, dict] = {}
     for r in rows:
         g = groups.setdefault(r["question_group_id"].strip(), {"type": r["type"].strip(), "n": 0})
-        g["n"] += 1  # type lấy từ câu đầu tiên = câu gốc
+        g["n"] += 1  # type lấy từ câu đầu tiên, tức câu gốc
     return groups
 
 

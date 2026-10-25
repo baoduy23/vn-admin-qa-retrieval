@@ -13,8 +13,8 @@ from src.data.text_utils import normalize_tone
 def tokenize(text):
     # Câu hỏi phải đc chuẩn hóa giống hệt kho dữ liệu
     #Kho đã thành hủy mà ng dùng gõ "huỷ" → ko khớp, nên cần chuẩn hóa
-    # normalize_tone tự trả về NFC nên không cần gọi unicodedata.normalize("NFC") nữa;
-    # vẫn cần lower() để BM25 không phân biệt hoa/thường
+    # normalize_tone tự trả về NFC nên khỏi gọi unicodedata.normalize("NFC") nữa,
+    # nhưng vẫn cần lower() để BM25 không phân biệt hoa/thường
     text = normalize_tone(text).lower()
     return re.findall(r"\w+", text)
 
