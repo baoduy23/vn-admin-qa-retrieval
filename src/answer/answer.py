@@ -162,10 +162,10 @@ class AnswerEngine:
         Điều 15 (hạn 60 ngày phải đi khai sinh) lên đầu vì cùng có "bao lâu", còn câu trả lời nằm ở Điều 16 Khoản 2,
         khoản cùng Điều với khoản hồ sơ.
         Câu có nhắc việc hộ tịch thì tên Điều (không có thì tên Mục) phải nói tới ít nhất một việc trong câu, và
-        không được nói tới khai sinh / kết hôn / khai tử mà câu không hỏi, để không trích thời hạn đăng ký lại khai tử
-        cho câu hỏi đăng ký lại khai sinh. Đoạn trùng việc riêng (đăng ký lại, thay đổi...) được ưu tiên hơn đoạn chỉ
-        trùng việc gốc: "sửa giấy khai sinh mất bao lâu" hỏi thủ tục thay đổi, không phải thủ tục khai sinh. Còn lại
-        lấy đoạn xếp trên. Không có đoạn nào thì giữ top-1.
+        không được nói tới việc nào câu không hỏi: "khai sinh mất bao lâu" không được trích thời hạn đăng ký lại
+        khai sinh (NĐ 123 Điều 26), "đăng ký lại khai sinh" không được trích đăng ký lại khai tử. Đoạn trùng việc
+        riêng (đăng ký lại, thay đổi...) được ưu tiên hơn đoạn chỉ trùng việc gốc: "sửa giấy khai sinh mất bao lâu"
+        hỏi thủ tục thay đổi, không phải thủ tục khai sinh. Còn lại lấy đoạn xếp trên. Không có đoạn nào thì giữ top-1.
         Trả về (đoạn, điểm): điểm của chính nó nếu được truy hồi, không thì điểm của khoản cùng Điều kéo nó vào."""
         procs = set(find_procedures(question))
         score_of = dict(hits)
@@ -182,7 +182,7 @@ class AnswerEngine:
                 if not PROCESSING_TIME_EVIDENCE.search(clean_query(s.get("display_text", "")).lower()):
                     continue
                 own = set(find_procedures(s.get("dieu_title") or "")) or set(find_procedures(s.get("muc_ten") or ""))
-                if procs and (not own & procs or (own - procs) & BASE_PROCEDURES):
+                if procs and (not own & procs or own - procs):
                     continue
                 rank = (len(own & procs - BASE_PROCEDURES), -len(seen))
                 if best is None or rank > best[0]:

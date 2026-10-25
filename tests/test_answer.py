@@ -133,16 +133,20 @@ def test_processing_time_quotes_same_article():
     kt = dict(CHUNKS[0], chunk_id="123.2015.ND-CP__D28", dieu="28", khoan=None, muc_ten="ĐĂNG KÝ LẠI KHAI SINH, KẾT HÔN, KHAI TỬ",
               dieu_title="Điều 28. Thủ tục đăng ký lại khai tử",
               display_text="2. Trong thời hạn 05 ngày làm việc, kể từ ngày tiếp nhận hồ sơ, công chức tư pháp - hộ tịch kiểm tra.")
-    chunks = CHUNKS + [k2, kt]
+    lai = dict(kt, chunk_id="123.2015.ND-CP__D26__K2", dieu="26", dieu_title="Điều 26. Thủ tục đăng ký lại khai sinh",
+               display_text="2. Trong thời hạn 05 ngày làm việc, kể từ ngày tiếp nhận hồ sơ, công chức tư pháp - hộ tịch "
+                            "kiểm tra, xác minh hồ sơ.")
+    chunks = CHUNKS + [k2, kt, lai]
     calls = []
 
     def search(q, k):
         calls.append(k)
-        return [(kt["chunk_id"], 0.95), (CHUNKS[1]["chunk_id"], 0.9), (CHUNKS[0]["chunk_id"], 0.8)][:k]
+        return [(kt["chunk_id"], 0.95), (lai["chunk_id"], 0.93), (CHUNKS[1]["chunk_id"], 0.9),
+                (CHUNKS[0]["chunk_id"], 0.8)][:k]
     eng = AnswerEngine(CFG, retriever=Retriever("fake", search), chunks=chunks, similar=lambda q, k: [], threshold=0.5)
     r = eng.answer("Đăng ký khai sinh mất bao lâu thì xong?")
     p = r["parts"][0]
-    assert p["chunk_id"] == k2["chunk_id"]                      # không trích thời hạn đăng ký lại khai tử
+    assert p["chunk_id"] == k2["chunk_id"]                      # không trích đăng ký lại khai tử / khai sinh
     assert p["quote_lines"][0].startswith("2. Ngay sau khi nhận đủ giấy tờ")
     assert p["top_score"] == 0.95                               # điểm dùng để từ chối vẫn là top-1 truy hồi
     assert r["sources"][0]["chunk_id"] == k2["chunk_id"] and r["sources"][0]["used_in_answer"]
@@ -151,6 +155,8 @@ def test_processing_time_quotes_same_article():
     r = eng.answer("Sinh con xong bao lâu phải đi khai sinh?")
     assert calls == [5]
     assert r["parts"][0]["chunk_id"] == kt["chunk_id"]
+    # hỏi đúng thủ tục đăng ký lại thì lấy đoạn đăng ký lại
+    assert eng.answer("Đăng ký lại khai sinh mất mấy ngày?")["parts"][0]["chunk_id"] == lai["chunk_id"]
 
 
 def test_multi_intent_answers_each_part():
