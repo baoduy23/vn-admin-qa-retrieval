@@ -1,8 +1,8 @@
 """Xử lý chữ dùng chung cho phần trả lời (Quân).
 
-So khớp giữa câu hỏi và đoạn luật làm ở mức ÂM TIẾT, dạng bỏ dấu + chữ thường, để câu gõ
-không dấu ("dang ky khai sinh") vẫn khớp với văn bản có dấu. Hàm bỏ dấu dùng lại strip_accents
-của TV3 (src/retrieval/query.py) để hai bên chuẩn hóa giống hệt nhau.
+Câu hỏi và đoạn luật được so ở mức âm tiết, bỏ dấu và viết thường, để câu gõ không dấu
+("dang ky khai sinh") vẫn khớp với văn bản có dấu. Hàm bỏ dấu lấy strip_accents của TV3
+(src/retrieval/query.py) cho hai bên chuẩn hoá giống nhau.
 """
 from __future__ import annotations
 
@@ -14,16 +14,16 @@ from src.retrieval.query import clean_query, has_diacritics, strip_accents
 
 WORD = re.compile(r"\w+", re.UNICODE)
 
-# Hư từ và từ để hỏi: không mang nội dung nên bỏ khi chấm điểm dòng và khi tô sáng.
-# Lọc trên dạng CÓ DẤU nếu câu hỏi có dấu: bỏ dấu thì "đang" trùng "đăng", "đó" trùng "độ".
-# Không bỏ "người", "con", "cha", "mẹ" (người nước ngoài, nhận cha mẹ con là nội dung chính).
+# Hư từ, từ để hỏi: không mang nội dung nên bỏ qua khi chấm điểm dòng và khi tô sáng.
+# Câu hỏi có dấu thì lọc trên bản có dấu, vì bỏ dấu thì "đang" trùng "đăng", "đó" trùng "độ".
+# Giữ lại "người", "con", "cha", "mẹ" vì người nước ngoài, nhận cha mẹ con là nội dung chính.
 STOPWORDS = set("""
 thì là có không được cần gì nào đâu bao lâu nhiêu mấy của cho và hay hoặc với ở tại để khi nếu làm
 sao thế như những các một tôi em mình bạn ạ nhé vậy ai phải đi mà này đó ra vào lại rồi đã sẽ đang bị
 theo về trong từ đến xong mất gồm phần việc muốn xin hỏi giúp ko k
 """.split())
-# Câu gõ không dấu: giữ lại các hư từ mà bỏ dấu sẽ trùng với chữ nội dung hay gặp trong hộ tịch
-# ("dang" = đang / ĐĂNG ký, "do" = đó / độ, "ma" = mà / mã, "the" = thế / thẻ, "da" = đã / dân, "di" = đi / di trú)
+# Câu gõ không dấu: không lọc mấy hư từ mà bỏ dấu đi thì trùng chữ hay gặp trong hộ tịch
+# ("dang" là đang / đăng ký, "do" là đó / độ, "ma" là mà / mã, "the" là thế / thẻ, "da" là đã / dân, "di" là đi / di trú)
 STOPWORDS_PLAIN = {strip_accents(w) for w in STOPWORDS} - {"dang", "do", "ma", "the", "da", "di"}
 
 
@@ -44,7 +44,7 @@ def content_syllables(text: str) -> list[str]:
 
 
 class IDF:
-    """IDF âm tiết tính trên các dòng của kho, để "khai sinh" nặng ký hơn "uy ban"."""
+    """IDF âm tiết tính trên từng dòng của kho, để "khai sinh" có trọng số cao hơn "uy ban"."""
 
     def __init__(self, texts: list[str]):
         df = Counter()

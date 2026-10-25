@@ -3,8 +3,8 @@
     python -m src.app.demo_seed            # hỏi lần lượt các câu train + validation, ghi vào artifacts/app.db
     python -m src.app.demo_seed --n 40     # chỉ 40 câu
 
-Chỉ dùng câu train + validation (KHÔNG lấy test), đánh giá ngẫu nhiên có seed để ra số liệu giống nhau.
-Muốn xóa: xóa file artifacts/app.db.
+Chỉ lấy câu train + validation, không lấy test. Đánh giá random có seed để lần nào chạy cũng ra số giống nhau.
+Muốn xoá thì xoá file artifacts/app.db.
 """
 from __future__ import annotations
 

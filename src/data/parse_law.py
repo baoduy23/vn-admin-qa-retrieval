@@ -29,7 +29,7 @@ RE_PL_MUC = re.compile(r"^([IVXLC]+)\.\s+(.*)$")  # I II trong phu luc
 
 
 def read_docx_lines(path):
-    """Lấy text các đoạn văn theo thứ tự, BỎ bảng (bảng = header quốc hiệu + chữ ký)."""
+    """Lấy text các đoạn văn theo thứ tự, bỏ bảng (bảng là phần quốc hiệu + chữ ký)."""
     d = docx.Document(path)
     # 1 đoạn Word có thể chứa ngắt dòng mềm (Shift+Enter), vd "Chương III\nMẪU GIẤY TỜ...":
     # tách ra từng dòng, không thì regex Chương/Mục không bắt được
@@ -40,7 +40,7 @@ RE_QUOTE_END = re.compile(r"”\s*[.;,]?$")  #dòng kết thúc đoạn trích: 
 
 
 def update_in_quote(in_quote, line):
-    """Đang trong đoạn trích hay không, SAU dòng này.
+    """Sau dòng này thì còn đang trong đoạn trích hay không.
     Dùng cờ bật/tắt chứ không đếm ngoặc, vì văn bản gốc hay lệch ngoặc
     (mở 2 lần đóng 1 lần): cứ dòng nào kết thúc bằng ” là coi như hết trích"""
     if RE_QUOTE_END.search(line):
@@ -70,7 +70,7 @@ def parse_doc(path, log=None):
         quoted = in_quote or s.startswith("“")
         in_quote = update_in_quote(in_quote, s)
  
-        if quoted:                            # đoạn trích: KHÔNG tách cấp, gom vào đơn vị hiện tại
+        if quoted:                            # trong đoạn trích thì không tách cấp, gom hết vào đơn vị hiện tại
             if cur is not None:
                 cur["lines"].append(s)
             continue
@@ -78,7 +78,7 @@ def parse_doc(path, log=None):
         if expect_title:                      # tên Chương / Mục / Phụ lục nằm ở (các) dòng kế
             is_heading = any(r.match(s) for r in (RE_CHUONG, RE_MUC, RE_DIEU, RE_PHULUC, RE_PL_MUC))
             if s.isupper() and not is_heading:
-                # tên dài bị xuống dòng ("ĐĂNG KÝ THAY ĐỔI, CẢI CHÍNH," / "BỔ SUNG HỘ TỊCH") → nối lại
+                # tên dài bị xuống dòng ("ĐĂNG KÝ THAY ĐỔI, CẢI CHÍNH," / "BỔ SUNG HỘ TỊCH") thì nối lại
                 ctx[expect_title] = f"{ctx[expect_title]} {s}" if ctx.get(expect_title) else s
                 if cur is not None and cur["level"] == "phu_luc":
                     cur["phu_luc_ten"] = ctx[expect_title]

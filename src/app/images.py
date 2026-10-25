@@ -1,12 +1,12 @@
-"""Ảnh trên giao diện web: chỉ 3 ảnh.
+"""Ảnh trên giao diện web, chỉ có 3 ảnh.
 
     hoa_sen              ảnh bên trái ô tìm kiếm (trang đầu)
     chim_lac             dải chim Lạc ở chân trang (hoạ tiết, chỉ dùng hình dáng, màu do CSS tô)
     hoa_van_trong_dong   hoa văn mặt trống đồng mờ làm nền khu tìm kiếm
 
-DÙNG ẢNH CỦA MÌNH: chép ảnh vào src/app/static/img/ và đặt tên trùng tên ở trên, đuôi .jpg, .jpeg,
-.png hoặc .webp (ví dụ src/app/static/img/hoa_sen.jpg). Web ưu tiên ảnh trong thư mục đó; không có
-thì lấy ảnh mặc định từ Wikimedia Commons (cần mạng). Đổi ảnh xong bấm Ctrl + F5 trên trình duyệt.
+Muốn dùng ảnh khác thì chép ảnh vào src/app/static/img/, đặt tên giống ở trên, đuôi .jpg, .jpeg, .png hoặc
+.webp (vd src/app/static/img/hoa_sen.jpg). Web lấy ảnh trong thư mục đó trước, không có thì lấy ảnh mặc định
+trên Wikimedia Commons (cần mạng). Đổi ảnh xong nhớ bấm Ctrl + F5 trên trình duyệt.
 
     python -m src.app.images        # tải ảnh mặc định về src/app/static/img/ (không ghi đè ảnh đã có)
 """
@@ -42,7 +42,7 @@ IMAGES = {
 
 
 def local_file(name: str) -> Path | None:
-    """Ảnh của nhóm trong static/img/ (tên trùng, đuôi bất kỳ trong EXTS), hoặc None."""
+    """Ảnh của nhóm trong static/img/ (trùng tên, đuôi nào trong EXTS cũng được), không có thì None."""
     for ext in EXTS:
         for f in (STATIC / f"{name}{ext}", STATIC / f"{name}{ext.upper()}"):
             if f.exists():
@@ -51,7 +51,7 @@ def local_file(name: str) -> Path | None:
 
 
 def url(name: str) -> str:
-    """Đường dẫn ảnh cho HTML/CSS. Ảnh trong máy kèm ?v=<thời điểm sửa> để trình duyệt không giữ ảnh cũ."""
+    """Đường dẫn ảnh để nhét vào HTML/CSS. Ảnh trong máy có thêm ?v=<lúc sửa> để trình duyệt không lấy ảnh cũ trong cache."""
     f = local_file(name)
     if f:
         return f"app/static/img/{f.name}?v={int(f.stat().st_mtime)}"

@@ -23,7 +23,7 @@ CFG = {"top_k": 5, "evidence_k": 3, "evidence_check": True, "multi_intent": {"sp
 
 
 def fake_engine(scores):
-    """scores: điểm cho 2 chunk theo thứ tự CHUNKS, dùng chung cho mọi câu."""
+    """scores: điểm của 2 chunk theo thứ tự trong CHUNKS, câu nào cũng dùng chung."""
     def search(q, k):
         pairs = sorted(zip([c["chunk_id"] for c in CHUNKS], scores), key=lambda x: -x[1])
         return pairs[:k]
@@ -31,7 +31,7 @@ def fake_engine(scores):
                         similar=lambda q, k: [], threshold=0.5)
 
 
-# ------------------------------------------------------------- intent
+# intent
 def test_split_multi_intent():
     assert split_multi_intent("Kết hôn cần giấy gì và nộp ở đâu?") == ["Kết hôn cần giấy gì", "Kết hôn nộp ở đâu"]
     assert len(split_multi_intent("Khai tử cần giấy tờ gì, ai đi khai và hạn bao nhiêu ngày?")) == 3
@@ -45,7 +45,7 @@ def test_no_false_split():
 
 
 def test_split_on_question_mark():
-    # hai câu hỏi liền nhau ngăn bằng "?"; vế 2 tự nêu việc hộ tịch nên không ghép "Khai sinh" vào
+    # hai câu hỏi liền nhau cách bằng "?", vế 2 đã tự nhắc việc hộ tịch nên không ghép "Khai sinh" vào
     assert split_multi_intent("Khai sinh cần giấy gì? Kết hôn mất bao lâu?") == ["Khai sinh cần giấy gì",
                                                                                  "Kết hôn mất bao lâu"]
     assert len(split_multi_intent("Khai sinh cần giấy gì?")) == 1
@@ -55,8 +55,8 @@ def test_expected_type_and_evidence():
     assert expected_type("Lệ phí cấp bản sao trích lục là bao nhiêu tiền?") == "so_tien"
     assert expected_type("Thời hạn đăng ký khai sinh là bao lâu?") == "thoi_han"
     assert expected_type("Không đi khai tử thì bị phạt không?") == "muc_phat"
-    assert expected_type("Cơ quan nào cấp giấy xác nhận phát hiện sai sót?") is None   # "phát" ≠ "phạt"
-    assert expected_type("phat hien sai sot trong giay khai sinh thi lam gi") is None   # không dấu: "phat" ≠ mức phạt
+    assert expected_type("Cơ quan nào cấp giấy xác nhận phát hiện sai sót?") is None   # "phát" chứ không phải "phạt"
+    assert expected_type("phat hien sai sot trong giay khai sinh thi lam gi") is None   # không dấu: "phat" ở đây không phải hỏi mức phạt
     assert expected_type("Người đang chấp hành án phạt tù có đăng ký kết hôn được không?") is None
     assert expected_type("khai sinh tre bi phat bao nhieu") == "muc_phat"
     assert expected_type("Chậm khai tử có bị xử phạt hành chính không?") == "muc_phat"
@@ -74,7 +74,7 @@ def test_underspecified_and_procedures():
     assert find_procedures("dang ky ket hon voi nguoi nuoc ngoai") == ["Kết hôn"]
 
 
-# ------------------------------------------------------------- template
+# template
 def test_citation_reads_khoan_from_quote():
     c = CHUNKS[1]
     assert citation(c, ["2. Công chức tư pháp ..."]) == "Điều 15 Khoản 2"
@@ -87,7 +87,7 @@ def test_highlight_unaccented_query():
     assert "<mark>Đăng</mark>" in h and "&lt;b&gt;" in h
 
 
-# ------------------------------------------------------------- answer()
+# answer()
 def test_answer_quotes_verbatim():
     r = fake_engine([0.9, 0.8]).answer("Đăng ký khai sinh cần giấy tờ gì?")
     assert not r["refused"]
@@ -109,7 +109,7 @@ def test_refuse_low_score_and_no_evidence():
     r = fake_engine([0.9, 0.8]).answer("Lệ phí khai sinh là bao nhiêu tiền?")
     assert r["refused"] and r["reason"] == "no_evidence"
     assert fake_engine([0.9, 0.8]).answer("   ")["reason"] == "empty"
-    for junk in ("😀😀", "??? !!!", "___"):                     # không có chữ hay số: không truy hồi
+    for junk in ("😀😀", "??? !!!", "___"):                     # không có chữ hay số thì khỏi truy hồi
         assert fake_engine([0.9, 0.8]).answer(junk)["reason"] == "empty"
 
 
@@ -123,7 +123,7 @@ def test_token_f1():
     assert token_f1("abc", "xyz") == 0.0
 
 
-# ------------------------------------------------------------- SQLite
+# SQLite
 def test_db_roundtrip(tmp_path):
     path = tmp_path / "app.db"
     r = fake_engine([0.9, 0.8]).answer("Đăng ký khai sinh cần giấy tờ gì?")
@@ -135,7 +135,7 @@ def test_db_roundtrip(tmp_path):
     assert db.summary(path) == {"n": 1, "refused": 0, "up": 0, "down": 1}
 
 
-# ------------------------------------------------------------- chọn khoản bằng cross-encoder
+# chọn khoản bằng cross-encoder
 def test_line_scorer_overrides_idf():
     def fake(question, chunk, lines):              # giả PhoRanker: thích dòng thứ 2
         return [0.0, 1.0][: len(lines)]
@@ -143,19 +143,19 @@ def test_line_scorer_overrides_idf():
                        chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5, line_scorer=fake)
     r = eng.answer("Trách nhiệm đăng ký khai sinh cho con của cha mẹ?")
     assert r["parts"][0]["quote_lines"][0].startswith("2. Công chức")
-    assert fake_engine([0.1, 0.9]).line_scorer is None      # truyền retriever giả → không nạp model
+    assert fake_engine([0.1, 0.9]).line_scorer is None      # truyền retriever giả nên không nạp model
 
 
-# ------------------------------------------------------------- câu ngoài phạm vi
+# câu ngoài phạm vi
 def test_out_of_scope_topic():
     assert out_of_scope_topic("Làm hộ chiếu mất bao lâu?") == "hộ chiếu, xuất nhập cảnh"
     assert out_of_scope_topic("bang lai xe het han doi o dau") == "giao thông"          # gõ không dấu
     assert out_of_scope_topic("Ly hôn thì tài sản chung chia thế nào?")                  # nhắc ly hôn vẫn chặn
-    # có nhắc việc hộ tịch → để truy hồi xử lý, không chặn
+    # có nhắc việc hộ tịch thì không chặn, để bước truy hồi lo
     assert out_of_scope_topic("Làm khai sinh cho con có cần căn cước của cha mẹ không?") is None
     assert out_of_scope_topic("Tôi đang tạm trú ở Bình Dương thì làm khai sinh cho con ở đó được không?") is None
     assert out_of_scope_topic("Đăng ký khai sinh cần giấy tờ gì?") is None
-    # "chết" chỉ là từ đời thường, không phải tên thủ tục: câu hỏi sang tên sổ đỏ vẫn bị chặn
+    # "chết" chỉ là từ đời thường, không phải tên thủ tục, nên câu hỏi sang tên sổ đỏ vẫn bị chặn
     assert out_of_scope_topic("Bố chết thì sổ đỏ sang tên thế nào?") == "đất đai, nhà ở"
     assert out_of_scope_topic("Bố chết thì làm khai tử ở đâu?") is None
 
@@ -173,7 +173,7 @@ def test_out_of_scope_refused_before_retrieval():
 
 
 def test_out_of_scope_part_of_multi_intent():
-    # cả câu có "khai tử" nên qua lọc cả câu; ý 2 hỏi sổ đỏ phải bị từ chối riêng, ý 1 vẫn được trả lời
+    # cả câu có "khai tử" nên qua được lọc cả câu, nhưng ý 2 hỏi sổ đỏ phải bị từ chối riêng, ý 1 vẫn trả lời
     r = fake_engine([0.9, 0.8]).answer("Khai tử cho bố cần giấy gì? Sổ đỏ sang tên thế nào?")
     assert len(r["parts"]) == 2 and not r["refused"]
     p1, p2 = r["parts"]
@@ -184,7 +184,7 @@ def test_out_of_scope_part_of_multi_intent():
 
 
 def test_no_overlap_refused_before_retrieval():
-    # điểm rerank là minmax: câu vô nghĩa vẫn có top-1 = 0.99 > τ, phải chặn trước khi truy hồi
+    # điểm rerank minmax thì câu vô nghĩa vẫn có top-1 = 0.99 > τ, nên phải chặn trước khi truy hồi
     called = []
     eng = AnswerEngine(CFG, retriever=Retriever("fake", lambda q, k: called.append(q) or [(CHUNKS[0]["chunk_id"], 0.99)]),
                        chunks=CHUNKS, similar=lambda q, k: [], threshold=0.5)

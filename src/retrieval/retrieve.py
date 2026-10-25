@@ -1,25 +1,25 @@
-"""Hàm retrieve() dùng chung (M5, TV3): TV2 đánh giá, TV4 ráp vào answer() và app.
+"""Hàm retrieve() dùng chung của TV3. TV2 dùng để đánh giá, TV4 gọi trong answer() và app.
 
     from src.retrieval.retrieve import retrieve
     retrieve("đăng ký khai sinh cần giấy tờ gì", k=10)   # [(chunk_id, score), ...], cao = liên quan hơn
 
-Pipeline đọc từ configs/retrieval_selected.yaml, file do evaluate_models.py ghi sau khi chọn trên
-validation. Chưa có file đó (chưa chạy đánh giá, máy chưa cài sentence-transformers) thì dùng
-BM25 âm tiết, tham số tốt nhất của baseline TV1, nên retrieve() luôn chạy được.
+Pipeline đọc từ configs/retrieval_selected.yaml, file này do evaluate_models.py ghi ra sau khi chọn trên
+validation. Chưa có file (chưa chạy đánh giá, hoặc máy chưa cài sentence-transformers) thì dùng BM25 âm tiết
+với tham số tốt nhất của baseline TV1, nên retrieve() lúc nào cũng chạy được.
 
-Các bước (pipeline):
+Các bước:
   bm25    BM25 âm tiết trên chunk_text; câu gõ không dấu tìm trên bản bỏ dấu của kho
   dense   SBERT bi-encoder, cosine (src/retrieval/dense.py)
   hybrid  gộp điểm BM25 + SBERT, minmax có trọng số hoặc RRF (src/retrieval/fusion.py)
   rerank  lấy top_n của first_stage (bm25 / dense / hybrid), cộng thêm tối đa extra_bm25 chunk đứng đầu
           BM25 mà bước đầu bỏ sót (rerank_candidates), rồi xếp lại tất cả bằng cross-encoder
           (ce_norm: minmax / raw, xem rerank.py)
-Câu gõ không dấu: BM25 tìm trên chỉ mục bỏ dấu; bi-encoder và cross-encoder nhận câu đã khôi phục dấu
+Câu gõ không dấu: BM25 tìm trên chỉ mục bỏ dấu, còn bi-encoder và cross-encoder nhận câu đã khôi phục dấu
 nếu restore_diacritics = true trong mục dense / rerank (restore.py).
-Mọi câu hỏi đều qua clean_query (NFC + normalize_tone) trước khi tokenize hoặc encode (issue #7).
+Câu hỏi nào cũng qua clean_query (NFC + normalize_tone) trước khi tokenize hoặc encode (issue #7).
 
-TV4 ráp vào: trong configs/answer.yaml đổi
-    function: "src.answer.retriever:baseline_retrieve"   →   function: "src.retrieval.retrieve:retrieve"
+Để TV4 dùng hàm này thì trong configs/answer.yaml đổi
+    function: "src.answer.retriever:baseline_retrieve"   thành   function: "src.retrieval.retrieve:retrieve"
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def load_config() -> dict:
 
 
 def load_spec() -> dict:
-    """Pipeline đã chốt trên validation; chưa có thì BM25 (fallback trong configs/retrieval.yaml)."""
+    """Pipeline đã chốt trên validation, chưa có thì dùng BM25 (fallback trong configs/retrieval.yaml)."""
     if SELECTED.exists():
         return yaml.safe_load(open(SELECTED, encoding="utf-8"))
     return dict(load_config()["fallback"])
@@ -57,12 +57,12 @@ def load_chunks() -> list[dict]:
 
 def rerank_candidates(ids: list[str], first_scores: list[float], bm25_scores: list[float], top_n: int,
                       extra_bm25: int = 0) -> list[tuple[str, float]]:
-    """Ứng viên đưa vào cross-encoder: top_n của bước đầu + chunk trong top extra_bm25 của BM25 mà bước
-    đầu chưa lấy (điểm kèm theo vẫn là điểm bước đầu, để blend tính đúng).
+    """Ứng viên đưa vào cross-encoder gồm top_n của bước đầu, cộng các chunk trong top extra_bm25 của BM25
+    mà bước đầu chưa lấy (điểm đi kèm vẫn là điểm bước đầu để blend tính cho đúng).
 
-    Lý do: hybrid minmax với alpha cao (SBERT nặng ký) hay đẩy văng chunk mà chỉ BM25 bắt được, nhất là
-    câu gõ không dấu: bi-encoder hiểu kém câu không dấu, còn BM25 tìm trên chỉ mục bỏ dấu vẫn ra.
-    Chunk ngoài top_n thì cross-encoder không bao giờ thấy, nên rerank không cứu được."""
+    Làm vậy vì hybrid minmax với alpha cao (SBERT nặng ký) hay đẩy mất chunk mà chỉ BM25 bắt được, nhất là
+    với câu gõ không dấu: bi-encoder hiểu kém câu không dấu, còn BM25 tìm trên chỉ mục bỏ dấu vẫn ra.
+    Chunk nằm ngoài top_n thì cross-encoder không thấy được, rerank cũng không cứu được."""
     cands = top_k(ids, first_scores, top_n)
     if extra_bm25 <= 0:
         return cands
@@ -76,14 +76,14 @@ def rerank_candidates(ids: list[str], first_scores: list[float], bm25_scores: li
 
 
 def candidate_runs(first_scores, bm25_scores, ids, questions, top_n, extra):
-    """Ứng viên rerank của từng câu: top_n bước đầu + chunk BM25 bị bỏ sót (xem rerank_candidates)."""
+    """Ứng viên rerank của từng câu: top_n bước đầu cộng chunk BM25 bị bỏ sót (xem rerank_candidates)."""
     return {q["question_id"]: rerank_candidates(ids, first_scores(q), bm25_scores(q) if extra else [], top_n, extra)
             for q in questions}
 
 
 def rerank_run(reranker, first_run, questions, blend, ce_cache, ce_norm=None, restore=None):
-    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, chấm mỗi cặp một lần cho cả lưới
-    (mỗi giá trị restore cần một cache riêng). ce_norm / restore = None: theo cấu hình của reranker."""
+    """ce_cache: question_id -> {chunk_id: điểm cross-encoder}, mỗi cặp chỉ chấm 1 lần cho cả lưới
+    (mỗi giá trị restore cần một cache riêng). ce_norm / restore là None thì theo cấu hình của reranker."""
     out = {}
     for q in questions:
         cands = first_run[q["question_id"]]
@@ -97,7 +97,7 @@ def rerank_run(reranker, first_run, questions, blend, ce_cache, ce_norm=None, re
 
 
 class SparseIndex:
-    """BM25 âm tiết. Hai chỉ mục: có dấu (mặc định) và bỏ dấu (cho câu gõ không dấu, tạo khi cần)."""
+    """BM25 âm tiết với 2 chỉ mục: có dấu (mặc định) và bỏ dấu (cho câu gõ không dấu, cần mới tạo)."""
 
     def __init__(self, chunks: list[dict], k1: float = 1.5, b: float = 0.9):
         self.texts = [c["chunk_text"] for c in chunks]
@@ -118,7 +118,7 @@ class SparseIndex:
 class Pipeline:
     def __init__(self, spec: dict, cfg: dict | None = None, chunks: list[dict] | None = None,
                  load_all: bool = False):
-        """load_all=True: nạp cả bi-encoder dù pipeline không cần (evaluate_models chạy mọi bước)."""
+        """load_all=True thì nạp cả bi-encoder dù pipeline không cần (evaluate_models chạy hết các bước)."""
         cfg = cfg or load_config()
         self.spec = spec
         self.chunks = chunks if chunks is not None else load_chunks()
@@ -141,7 +141,7 @@ class Pipeline:
                                      batch_size=bs, device=dev)
 
     def stage_scores(self, question: str, stage: str) -> list[float]:
-        """Điểm trên toàn bộ chunk (cùng thứ tự self.ids) của bước bm25 / dense / hybrid."""
+        """Điểm của bước bm25 / dense / hybrid trên toàn bộ chunk (cùng thứ tự self.ids)."""
         if stage == "bm25":
             return self.sparse.scores(question)
         if stage == "dense":
@@ -170,5 +170,5 @@ def get_pipeline() -> Pipeline:
 
 
 def retrieve(question: str, k: int = 10) -> list[tuple[str, float]]:
-    """Top-k (chunk_id, score) đã xếp hạng, điểm cao = liên quan hơn."""
+    """Top-k (chunk_id, score) đã xếp hạng, điểm càng cao càng liên quan."""
     return get_pipeline().search(question, k)

@@ -31,8 +31,8 @@ def ndcg_at_k(ranked, qrels, k):
 def evaluate(run, qrels_all, ks=(1, 3, 5, 10)):
     """run: question_id -> ranked chunk_ids; qrels_all: question_id -> {chunk_id: rel}.
 
-    Câu hỏi out_of_scope (không có trong qrels_all) bị bỏ qua ở đây;
-    tỷ lệ từ chối đúng được tính riêng.
+    Câu out_of_scope (không có trong qrels_all) bị bỏ qua ở đây,
+    tỷ lệ từ chối đúng tính riêng.
     """
     qids = [q for q in run if q in qrels_all]
     if not qids:

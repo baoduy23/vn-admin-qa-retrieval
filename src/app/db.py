@@ -1,11 +1,11 @@
 """SQLite lưu lịch sử truy vấn và đánh giá của người dùng (Quân).
 
-Bảng (theo lộ trình, thêm vài cột phục vụ thống kê):
+Các bảng (theo lộ trình, thêm vài cột để làm thống kê):
     queries(id, time, question, refused, top_chunk_id, top_score, reason, n_parts, pipeline)
     feedback(query_id, rating, comment, time)      rating: 1 = hữu ích, -1 = chưa đúng
 
-File mặc định artifacts/app.db (thư mục artifacts không commit). Đổi bằng biến môi trường APP_DB.
-Trên Streamlit Community Cloud ổ đĩa bị xóa khi app khởi động lại, nên lịch sử chỉ giữ trong phiên deploy.
+File mặc định là artifacts/app.db (thư mục artifacts không commit), muốn đổi thì đặt biến môi trường APP_DB.
+Trên Streamlit Community Cloud ổ đĩa bị xoá mỗi lần app khởi động lại, nên lịch sử chỉ còn trong lần deploy đó.
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
 
 @contextmanager
 def session(path=None):
-    """Mở kết nối, commit khi xong, luôn đóng (Streamlit chạy lại script liên tục, không giữ kết nối)."""
+    """Mở kết nối, xong thì commit rồi đóng luôn (Streamlit chạy lại script liên tục nên không giữ kết nối)."""
     con = connect(path)
     try:
         yield con
@@ -66,10 +66,10 @@ def session(path=None):
 
 
 def log_query(result: dict, path=None) -> int:
-    """Ghi một lần hỏi từ kết quả answer(); trả id để gắn đánh giá."""
+    """Ghi một lượt hỏi từ kết quả answer(), trả về id để gắn đánh giá."""
     top = next((p["chunk_id"] for p in result.get("parts", []) if p.get("chunk_id")), None)
     if top is None and result.get("sources"):
-        top = result["sources"][0]["chunk_id"]          # câu bị từ chối: vẫn ghi đoạn gần nhất để thống kê
+        top = result["sources"][0]["chunk_id"]          # câu bị từ chối vẫn ghi đoạn gần nhất để làm thống kê
     with session(path) as con:
         cur = con.execute(
             "INSERT INTO queries(time, question, refused, top_chunk_id, top_score, reason, n_parts, pipeline) "
@@ -80,7 +80,7 @@ def log_query(result: dict, path=None) -> int:
 
 
 def save_feedback(query_id: int, rating: int, comment: str = "", path=None) -> None:
-    """Mỗi câu hỏi giữ đánh giá mới nhất (bấm lại thì ghi đè)."""
+    """Mỗi câu hỏi chỉ giữ đánh giá mới nhất, bấm lại thì ghi đè."""
     with session(path) as con:
         con.execute("DELETE FROM feedback WHERE query_id = ?", (query_id,))
         con.execute("INSERT INTO feedback(query_id, rating, comment, time) VALUES (?, ?, ?, ?)",

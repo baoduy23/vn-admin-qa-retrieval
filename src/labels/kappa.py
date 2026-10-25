@@ -5,12 +5,12 @@
         --out results/data_quality/label_agreement
 
 Mỗi file là CSV (question_id, chunk_id, relevance) hoặc phiếu .xlsx (sheet qrels, Kết luận).
-Câu được tính: giao của hai bên (sheet Kết luận có verdict ở cả hai phiếu; với CSV thì
-dùng --qids hoặc các câu có nhãn ở ít nhất một bên).
+Chỉ tính các câu cả hai bên cùng có (sheet Kết luận có verdict ở cả hai phiếu; nếu là CSV thì
+lấy theo --qids, hoặc các câu có nhãn ở ít nhất một bên).
 
-Đơn vị: cặp (câu có đáp án, chunk) trong tập ứng viên = chunk một trong hai người đã gán
-+ mọi chunk cùng Điều với các chunk đó (tránh kappa cao giả vì quá nhiều cặp không liên quan).
-Báo cáo: kappa nhị phân (liên quan: mức >=1), kappa có trọng số 3 mức (0/1/2),
+Đơn vị tính là cặp (câu có đáp án, chunk). Tập ứng viên gồm các chunk mà ít nhất một người đã gán, cộng
+mọi chunk cùng Điều với chúng. Không lấy cả kho vì quá nhiều cặp không liên quan sẽ làm kappa cao ảo.
+Kết quả: kappa nhị phân (liên quan là mức >=1), kappa có trọng số 3 mức (0/1/2),
 kappa verdict ở mức câu hỏi (có/không có đáp án), tỷ lệ đồng ý về type.
 """
 from __future__ import annotations

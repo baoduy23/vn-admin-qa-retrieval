@@ -55,7 +55,7 @@ def test_amendments_applied(chunks):
     by_id = {c["chunk_id"]: c for c in chunks}
     # Điều 28a–28c do NĐ 07/2025 thêm vào NĐ 123
     assert any(i.startswith("123.2015.ND-CP__D28a") for i in by_id)
-    # khoản 1 Điều 2 NĐ 123 đã bị 18/2026 thay: không còn câu về "giai đoạn chuyển tiếp"
+    # khoản 1 Điều 2 NĐ 123 đã bị 18/2026 thay, nên không còn câu về "giai đoạn chuyển tiếp"
     k1 = [c for i, c in by_id.items() if i.startswith("123.2015.ND-CP__D2__K1")]
     assert k1 and all("giai đoạn chuyển tiếp" not in c["display_text"] for c in k1)
     assert all("18.2026.ND-CP" in c["amended_by"] for c in k1)

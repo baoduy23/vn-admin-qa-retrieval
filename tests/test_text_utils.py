@@ -21,8 +21,8 @@ def test_normalize_tone():
 
 
 def test_bm25_matches_both_tone_styles():
-    # Kho viết kiểu MỚI, câu hỏi gõ kiểu CŨ. Câu hỏi CHỈ có đúng 1 từ khác kiểu dấu,
-    # để không còn từ nào khác "cứu" kết quả: nếu tokenize không chuẩn hóa thì điểm = 0.
+    # Kho viết dấu kiểu mới, câu hỏi gõ kiểu cũ. Câu hỏi chỉ có đúng 1 từ khác kiểu dấu,
+    # để không có từ nào khác cứu kết quả: tokenize mà không chuẩn hoá thì điểm sẽ bằng 0.
     from src.retrieval.bm25 import BM25, tokenize
     assert tokenize("Hu\u1ef7 KẾT HÔN") == tokenize("hủy kết hôn")    # "Huỷ" kiểu cũ
     bm = BM25(["thủ tục hủy kết hôn", "đăng ký khai sinh"], ["a", "b"])

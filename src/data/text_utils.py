@@ -1,7 +1,7 @@
 """Làm sạch văn bản thủ tục hành chính.
 
-Mỗi rule có tên và được đếm số lần tác động (CleanLog), để báo cáo tiền xử lý
-ghi được "rule nào đã sửa bao nhiêu chỗ" thay vì làm sạch kiểu hộp đen.
+Rule nào cũng có tên và được đếm số lần sửa (CleanLog), để báo cáo tiền xử lý ghi được
+rule nào sửa bao nhiêu chỗ, chứ không làm sạch kiểu hộp đen.
 
 Nguyên tắc (theo hướng dẫn TV1, mục 5.2):
 - Không lowercase, không bỏ dấu, không bỏ stopword ở bước này.
@@ -11,8 +11,8 @@ import re
 import unicodedata
 from collections import Counter
 
-# Dòng rác của giao diện cổng thông tin. Chỉ xóa khi CẢ DÒNG khớp,
-# để không lỡ tay xóa nội dung thật có chứa các chữ này.
+# Dòng rác của giao diện cổng thông tin. Chỉ xoá khi khớp nguyên cả dòng,
+# để không lỡ xoá nội dung thật có mấy chữ này.
 BOILERPLATE_LINES = {
     "tải về", "tải xuống", "xem chi tiết", "xem thêm", "thu gọn", "in", "in trang",
     "chia sẻ", "đóng", "quay lại", "nộp hồ sơ", "nộp trực tuyến", "đăng nhập",

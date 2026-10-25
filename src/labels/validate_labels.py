@@ -2,7 +2,7 @@
 
 CSV  : cột question_id, chunk_id, relevance (như data/labels/qrels.csv).
 .xlsx: sheet "qrels" cùng 3 cột đó; cần cài openpyxl.
-Trả về list dict với giá trị đã ép về chuỗi và bỏ khoảng trắng ("2.0" từ Excel → "2").
+Trả về list dict, giá trị đã ép về chuỗi và bỏ khoảng trắng ("2.0" từ Excel thành "2").
 """
 from __future__ import annotations
 

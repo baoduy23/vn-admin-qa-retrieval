@@ -1,17 +1,17 @@
-"""Đánh giá và chọn mô hình truy hồi cải tiến (M5, TV3), so với baseline BM25 của TV1.
+"""Đánh giá và chọn mô hình truy hồi cải tiến (TV3), so với baseline BM25 của TV1.
 
-Quy trình (khóa test, giống src/retrieval/evaluate.py):
+Khoá test giống src/retrieval/evaluate.py:
   1. Trên validation:
      a. dense: thử từng bi-encoder × restore_diacritics (khôi phục dấu câu không dấu) trong configs/retrieval.yaml,
-        giữ bộ NDCG@10 cao nhất (hòa: MRR, rồi từ chối đúng nhiều hơn, rồi từ chối nhầm ít hơn)
+        giữ bộ NDCG@10 cao nhất (hoà thì xét MRR, rồi từ chối đúng nhiều hơn, rồi từ chối nhầm ít hơn)
      b. hybrid: BM25 + bi-encoder tốt nhất, lưới fusion (minmax / rrf) × alpha
-     c. rerank: bước đầu = bước có Recall@20 cao nhất trong bm25 / dense / hybrid; thử từng
+     c. rerank: bước đầu là bước có Recall@20 cao nhất trong bm25 / dense / hybrid, thử từng
         cross-encoder × restore_diacritics × extra_bm25 × blend × ce_norm (minmax / raw) trên top_n = 20
         (+ tối đa extra_bm25 chunk của BM25)
-     d. pipeline cuối = bước NDCG@10 cao nhất; ngưỡng từ chối (điểm top-1) của mỗi bước chọn như TV1
-     e. câu hỏi tương tự: chọn min_score trên validation (bỏ nhóm của chính câu hỏi)
-     → ghi configs/retrieval_selected.yaml (retrieve() và similar_questions() đọc file này)
-  2. Chỉ khi thêm --test: đọc configs/retrieval_selected.yaml, chạy test MỘT lần với tham số đã chốt.
+     d. pipeline cuối là bước có NDCG@10 cao nhất, ngưỡng từ chối (điểm top-1) của mỗi bước chọn như TV1
+     e. câu hỏi tương tự: chọn min_score trên validation (bỏ nhóm của chính câu đó)
+     Xong thì ghi configs/retrieval_selected.yaml, retrieve() và similar_questions() đọc file này.
+  2. Phải thêm --test mới chạy test: đọc configs/retrieval_selected.yaml, chạy test 1 lần với tham số đã chốt.
 
 Chạy từ gốc repo:  python -m src.retrieval.evaluate_models          (chỉ validation, chọn tham số)
                    python -m src.retrieval.evaluate_models --test   (validation + test với bộ đã chốt)
@@ -46,7 +46,7 @@ OUT = ROOT / "results/retrieval/models"
 TOPN = 20
 
 
-# ---------- 1. Tiện ích ----------
+# 1. Tiện ích
 def set_seed(seed):
     random.seed(seed)
     try:
@@ -64,15 +64,15 @@ def metrics(run, questions, qrels, ks):
 
 
 def key(m, select_by):
-    """Chọn theo NDCG@10, hòa thì MRR. Hòa nữa (vd ce_norm minmax / raw với blend 0 xếp hạng y hệt nhau)
-    thì chọn bộ từ chối đúng nhiều hơn, rồi từ chối nhầm ít hơn. Hòa hết thì giữ bộ thử trước (giá trị đầu
+    """Chọn theo NDCG@10, hoà thì xét MRR. Vẫn hoà (vd ce_norm minmax và raw với blend 0 xếp hạng y hệt nhau)
+    thì lấy bộ từ chối đúng nhiều hơn, rồi tới từ chối nhầm ít hơn. Hoà hết thì giữ bộ thử trước (giá trị đầu
     của mỗi lưới, tức cách làm cũ)."""
     return (round(m[select_by], 6), round(m["mrr"], 6), round(m.get("correct_refusal", 0), 6),
             -round(m.get("wrong_refusal", 0), 6))
 
 
 def scored(run, questions, qrels, ks, max_wrong):
-    """metrics() + ngưỡng từ chối trên điểm top-1 (chọn như TV1) và tỉ lệ từ chối đúng / nhầm ở ngưỡng đó."""
+    """metrics() cộng thêm ngưỡng từ chối theo điểm top-1 (chọn như TV1) và tỉ lệ từ chối đúng / nhầm ở ngưỡng đó."""
     m = metrics(run, questions, qrels, ks)
     t = pick_threshold(run, questions, max_wrong)
     correct, wrong = refusal_rates(run, questions, t)
@@ -110,7 +110,7 @@ def model_cfg(m):
     return {k: v for k, v in m.items() if k != "enabled"}
 
 
-# ---------- 2. Chọn trên validation ----------
+# 2. Chọn trên validation
 def select(cfg, chunks, val, qrels):
     ks, sel = cfg["eval"]["ks"], cfg["eval"]["select_by"]
     ids = [c["chunk_id"] for c in chunks]
@@ -133,7 +133,7 @@ def select(cfg, chunks, val, qrels):
             continue
         try:
             idx = DenseIndex(model_cfg(m), chunks, batch_size=run_cfg["batch_size"], device=run_cfg["device"])
-        except Exception as e:                                       # tải model lỗi: ghi lại, thử model khác
+        except Exception as e:                                       # tải model lỗi thì ghi lại rồi thử model khác
             traceback.print_exc()
             grid.append(grid_row("dense", m["name"], {}, {}, ks, error=short_error(e)))
             continue
@@ -217,21 +217,21 @@ def select(cfg, chunks, val, qrels):
 
 
 def select_similar(cfg, spec, questions, qrels):
-    """min_score của câu hỏi tương tự: chọn trên validation, kho = train + validation trừ nhóm của chính câu."""
+    """Chọn min_score cho câu hỏi tương tự trên validation. Kho là train + validation, trừ nhóm của chính câu đó."""
     from src.retrieval.similar import SimilarIndex, question_bank
     run = cfg["runtime"]
     idx = SimilarIndex(question_bank(), spec["dense"], run["batch_size"], run["device"])
     rows = similar_table(idx, [q for q in questions if q["split"] == "validation"], qrels,
                          cfg["similar_questions"]["min_score_grid"], "validation")
-    # chọn ngưỡng có F1(precision trong các gợi ý đã hiện, tỉ lệ câu có gợi ý) cao nhất; hòa lấy ngưỡng cao hơn
+    # chọn ngưỡng có F1(precision của gợi ý đã hiện, tỉ lệ câu có gợi ý) cao nhất, hoà thì lấy ngưỡng cao hơn
     pick = max(rows, key=lambda r: (r["f1"], r["min_score"]))
     spec["similar"] = dict(dense=True, min_score=pick["min_score"], k=cfg["similar_questions"]["k"])
     return rows
 
 
 def similar_table(idx, questions, qrels, grid, split):
-    """Gợi ý top-1 'đúng' khi câu gợi ý có chung ít nhất 1 chunk liên quan với câu hỏi.
-    Câu không trả lời được: gợi ý nào hiện ra cũng là sai (shown_unanswerable)."""
+    """Gợi ý top-1 tính là đúng khi câu gợi ý có chung ít nhất 1 chunk liên quan với câu hỏi.
+    Với câu không trả lời được thì hiện gợi ý nào cũng tính là sai (shown_unanswerable)."""
     qrel_of = {qid: {c for c, r in d.items() if r > 0} for qid, d in qrels.items()}
     top1 = {}
     for q in questions:
@@ -267,16 +267,16 @@ def write_selected(spec, val_grid_best):
     SELECTED.write_text(header + yaml.safe_dump(spec, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
-# ---------- 3. Chạy một split với bộ đã chốt ----------
+# 3. Chạy một split với bộ đã chốt
 def run_split(spec, cfg, chunks, questions):
-    """bước → top-20 từng câu, theo đúng spec (không chọn lại tham số)."""
+    """Trả về top-20 từng câu cho mỗi bước, theo đúng spec (không chọn lại tham số)."""
     from src.retrieval.retrieve import Pipeline
     ids = [c["chunk_id"] for c in chunks]
     stages = [s for s in STAGES if s in spec["thresholds"]]
     full = Pipeline(dict(spec, pipeline=stages[-1]), cfg, chunks, load_all=True)
     cache = {s: ScoreCache(lambda text, s=s: full.stage_scores(text, s)) for s in ("bm25", "dense", "hybrid")}
     runs = {s: run_from(cache[s], ids, questions) for s in ("bm25", "dense", "hybrid")}
-    # đúng baseline TV1: chỉ mục có dấu cho mọi câu, để thấy riêng phần lợi của xử lý câu gõ không dấu
+    # giống baseline TV1: câu nào cũng tìm trên chỉ mục có dấu, để thấy riêng phần lợi của xử lý câu không dấu
     runs = {"bm25_raw": {q["question_id"]: full.sparse.accented.search(clean_query(q["question"]), TOPN)
                          for q in questions}, **runs}
     if "rerank" in stages:
@@ -314,7 +314,7 @@ def by_type(run, questions, qrels, ks):
 
 
 def by_accent(run, questions, qrels, ks):
-    """Câu gõ có dấu / không dấu: để thấy riêng tác dụng của khôi phục dấu."""
+    """Tách câu gõ có dấu / không dấu để thấy riêng tác dụng của khôi phục dấu."""
     rows = []
     for t, want in (("co_dau", True), ("khong_dau", False)):
         qs = [q for q in questions if q["type"] not in NO_QRELS and has_diacritics(q["question"]) == want]
@@ -325,8 +325,8 @@ def by_accent(run, questions, qrels, ks):
 
 
 def switch_table(grid, spec, sel):
-    """Mỗi tổ hợp công tắc (restore_diacritics, ce_norm) của model đã chọn: bộ tham số tốt nhất trong lưới
-    validation. Đọc bảng này để biết bật / tắt công tắc nào làm số tăng, chứ không chỉ thấy bộ thắng."""
+    """Với mỗi tổ hợp công tắc (restore_diacritics, ce_norm) của model đã chọn, lấy bộ tham số tốt nhất trong
+    lưới validation. Nhìn bảng này mới biết bật / tắt công tắc nào làm số tăng, chứ không chỉ thấy bộ thắng."""
     L = []
     for stage, keys in (("dense", ("restore_diacritics",)), ("rerank", ("restore_diacritics", "ce_norm"))):
         if stage not in spec:
@@ -381,7 +381,7 @@ def versions():
             f"({man.get('review_status', '?')})")
 
 
-# ---------- 4. Báo cáo ----------
+# 4. Báo cáo
 def report(results, types, grid, sim_rows, spec, ks, questions):
     n = {s: sum(q["split"] == s for q in questions) for s in SPLITS}
     L = ["# Kết quả mô hình truy hồi cải tiến (TV3)", "",
@@ -403,7 +403,7 @@ def report(results, types, grid, sim_rows, spec, ks, questions):
             L.append(f"| {r['stage']} | {r['model']} | " + " | ".join(f"{r[f'R@{k}']:.3f}" for k in ks)
                      + f" | {r['MRR']:.3f} | {r['NDCG@10']:.3f} | {r['threshold']:.3f} | "
                        f"{r['correct_refusal']:.2f} | {r['wrong_refusal']:.2f} |")
-        accent = ["co_dau", "khong_dau"]                 # by_accent: để cuối bảng, tách khỏi các type câu hỏi
+        accent = ["co_dau", "khong_dau"]                 # by_accent để cuối bảng, tách riêng khỏi các type câu hỏi
         tlist = sorted({t["type"] for t in types if t["split"] == split} - set(accent)) + accent
         L += ["", f"Theo type ({split}, MRR; co_dau / khong_dau = câu gõ có dấu / không dấu):", "", "| Bước | " + " | ".join(tlist) + " |",
               "|" + "---|" * (1 + len(tlist))]
@@ -430,7 +430,7 @@ def report(results, types, grid, sim_rows, spec, ks, questions):
     print("\n".join(L))
 
 
-# ---------- 5. Chạy ----------
+# 5. Chạy
 def main(with_test=False):
     cfg = load_config()
     set_seed(cfg["runtime"]["seed"])

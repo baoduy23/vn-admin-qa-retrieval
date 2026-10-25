@@ -1,13 +1,12 @@
-"""Chấm từng dòng (khoản / điểm) bằng cross-encoder để chọn đoạn trích (M6).
+"""Chấm từng dòng (khoản / điểm) bằng cross-encoder để chọn đoạn trích.
 
-best_quote() mặc định chọn dòng theo tổng IDF âm tiết trùng câu hỏi, nên hay lệch khoản khi câu hỏi
-diễn đạt khác chữ trong luật (vd hỏi "cần chuẩn bị những gì" mà khoản đúng ghi "nộp tờ khai").
-Ở đây dùng lại đúng PhoRanker TV3 đã chọn (configs/retrieval_selected.yaml, mục rerank) để chấm
-cặp (câu hỏi, tên Điều + dòng). Pipeline rerank đã nạp model thì dùng chung model đó, không nạp lần hai
-(đỡ RAM khi deploy).
+Mặc định best_quote() chọn dòng theo tổng IDF các âm tiết trùng câu hỏi, nên hay chọn lệch khoản khi câu hỏi
+dùng chữ khác với luật (vd hỏi "cần chuẩn bị những gì" mà khoản đúng lại ghi "nộp tờ khai").
+File này dùng lại PhoRanker mà TV3 đã chọn (configs/retrieval_selected.yaml, mục rerank) để chấm cặp
+(câu hỏi, tên Điều + dòng). Nếu pipeline rerank đã nạp model rồi thì xài chung, không nạp lần 2 cho đỡ RAM lúc deploy.
 
-    configs/answer.yaml → quote.scorer: rerank | idf
-Không nạp được model (chưa cài torch, pipeline không phải rerank) → trả None, best_quote dùng IDF như cũ.
+    bật trong configs/answer.yaml, mục quote.scorer: rerank | idf
+Không nạp được model (chưa cài torch, hoặc pipeline không phải rerank) thì trả None, best_quote quay về IDF.
 """
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ LineScorer = Callable[[str, dict, list[str]], list[float]]
 
 
 def _cross_encoder(m: dict):
-    """Model cross-encoder của pipeline đang chạy nếu có, không thì nạp mới theo cùng cấu hình."""
+    """Lấy model cross-encoder của pipeline đang chạy, chưa có thì nạp mới theo cùng cấu hình."""
     from src.retrieval.retrieve import get_pipeline, load_config
     try:
         rr = get_pipeline().reranker

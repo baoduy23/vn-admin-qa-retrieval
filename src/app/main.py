@@ -1,12 +1,10 @@
-"""Web hỏi đáp hộ tịch (Quân, M6). Chạy từ gốc repo:
+"""Web hỏi đáp hộ tịch (Quân). Chạy từ thư mục gốc repo:
 
     streamlit run src/app/main.py
-    ANSWER_PIPELINE=bm25 streamlit run src/app/main.py      # máy không có torch: chạy bản BM25
+    ANSWER_PIPELINE=bm25 streamlit run src/app/main.py      # máy không có torch thì chạy bản BM25
 
-Đủ các chức năng đề bài yêu cầu:
-  1. ô hỏi đáp                         4. câu hỏi tương tự            7. lịch sử truy vấn + thống kê chủ đề
-  2. câu trả lời đề xuất (trích dẫn)   5. nút đánh giá câu trả lời
-  3. nguồn + đoạn trích tô sáng        6. thông báo khi không đủ căn cứ
+Có đủ 7 chức năng đề bài yêu cầu: ô hỏi đáp, câu trả lời đề xuất có trích dẫn, nguồn và đoạn trích tô sáng,
+câu hỏi tương tự, nút đánh giá câu trả lời, thông báo khi không đủ căn cứ, lịch sử truy vấn và thống kê chủ đề.
 """
 from __future__ import annotations
 
@@ -33,7 +31,7 @@ from src.app import images  # noqa: E402
 from src.app.style import css  # noqa: E402
 
 TABS = [":material/home: Hỏi đáp", "Lịch sử truy vấn", "Thống kê", "Giới thiệu hệ thống"]
-# st.tabs(on_change=...) chỉ có ở Streamlit mới; bản cũ hơn thì vẫn chạy, chỉ là vẽ cả 4 tab như trước.
+# st.tabs(on_change=...) chỉ có ở bản Streamlit mới. Bản cũ vẫn chạy được, chỉ là vẽ cả 4 tab như hồi trước.
 LAZY_TABS = "on_change" in inspect.signature(st.tabs).parameters
 
 QUICK = [
@@ -53,15 +51,15 @@ PROCS = [
 ]
 
 
-# ======================================================================= tài nguyên dùng chung
+# tài nguyên dùng chung
 @st.cache_resource(show_spinner="Đang nạp mô hình và chỉ mục văn bản…")
 def get_engine() -> AnswerEngine:
     return AnswerEngine()
 
 
 def pipeline_desc(engine: AnswerEngine) -> dict:
-    """Mô tả đúng pipeline đang chạy cho thẻ "Cách hệ thống trả lời", chân trang, trang giới thiệu.
-    Trước đây ghi cứng "BM25 + SBERT + PhoRanker", kể cả khi web đã lùi về BM25 vì không nạp được model."""
+    """Mô tả pipeline đang chạy thật, dùng cho thẻ "Cách hệ thống trả lời", chân trang và trang giới thiệu.
+    Hồi trước ghi cứng "BM25 + SBERT + PhoRanker", kể cả lúc web đã chuyển về BM25 vì không nạp được model."""
     name = engine.retriever.name
     search = {"bm25": "BM25", "dense": "SBERT"}.get(name, "BM25 + SBERT")
     rerank = ""
@@ -76,8 +74,8 @@ def pipeline_desc(engine: AnswerEngine) -> dict:
 
 @st.cache_data
 def topic_questions(per_topic: int = 5) -> dict[str, list[str]]:
-    """Câu hỏi mẫu theo từng việc hộ tịch, lấy từ bộ câu đã gán nhãn train + validation (không lấy test),
-    mỗi nhóm câu hỏi 1 câu, ưu tiên câu gõ có dấu. Dùng cho mục "Chủ đề hữu ích" (kiểu Kho tri thức UEH)."""
+    """Câu hỏi mẫu cho từng việc hộ tịch, lấy từ câu đã gán nhãn của train + validation (không lấy test),
+    mỗi nhóm câu hỏi lấy 1 câu, ưu tiên câu có dấu. Dùng cho mục "Chủ đề hữu ích" (bắt chước Kho tri thức UEH)."""
     from src.retrieval.query import has_diacritics
     from src.retrieval.similar import question_bank
     out: dict[str, list[str]] = {label: [] for label, _, _ in PROCS}
@@ -103,13 +101,13 @@ def ask(text: str) -> None:
 
 
 def ask_again(text: str) -> None:
-    """Nút "Hỏi lại" ở tab Lịch sử: như ask(), rồi chuyển luôn về tab Hỏi đáp để thấy kết quả."""
+    """Nút "Hỏi lại" ở tab Lịch sử: giống ask(), xong chuyển qua tab Hỏi đáp để xem kết quả."""
     ask(text)
     if LAZY_TABS:
         st.session_state.nav = TABS[0]
 
 
-# ======================================================================= khung trang
+# khung trang
 def header() -> None:
     st.markdown(css(), unsafe_allow_html=True)
     st.markdown("""
@@ -150,7 +148,7 @@ def footer(engine: AnswerEngine) -> None:
 
 
 def banner(engine: AnswerEngine) -> None:
-    """Banner lớn kiểu UEH: nền cam đất chuyển màu, khối hình học vàng/cam."""
+    """Banner lớn giống trang UEH: nền cam đất chuyển màu, mấy khối hình học vàng/cam."""
     n_docs = len(source_list())
     st.markdown(f"""
 <div class="banner"><div class="inner">
@@ -183,8 +181,8 @@ def search_form(compact: bool) -> bool:
 
 
 def hero(engine: AnswerEngine, compact: bool) -> bool:
-    """Khu tìm kiếm kiểu UEH: câu chào, ô bo tròn, ảnh hoa sen bên trái, nền hoa văn trống đồng.
-    compact=True (đang xem kết quả): bỏ ảnh cho gọn. Trả True nếu có câu cần trả lời."""
+    """Khu tìm kiếm giống trang UEH: câu chào, ô bo tròn, ảnh hoa sen bên trái, nền hoa văn trống đồng.
+    compact=True (lúc đang xem kết quả) thì bỏ ảnh cho gọn. Trả True nếu có câu cần trả lời."""
     with st.container(key="hero"):
         if compact:
             _, mid, _ = st.columns([0.35, 4, 0.35])
@@ -202,7 +200,7 @@ def hero(engine: AnswerEngine, compact: bool) -> bool:
     return bool(submitted or pending)
 
 
-# ======================================================================= hỏi đáp
+# hỏi đáp
 def run_query(engine: AnswerEngine, question: str) -> None:
     t = time.perf_counter()
     result = engine.answer(question)
@@ -350,7 +348,7 @@ def tech_box(r: dict) -> None:
 
 
 def home_empty(engine: AnswerEngine) -> None:
-    """Trang đầu: chủ đề hữu ích (accordion kiểu Kho tri thức UEH) + thẻ "Cách hệ thống trả lời"."""
+    """Trang đầu: chủ đề hữu ích (dạng mở/đóng giống Kho tri thức UEH) và thẻ "Cách hệ thống trả lời"."""
     left, right = st.columns([1.6, 1], gap="large")
     topics = topic_questions()
     with left:
@@ -409,7 +407,7 @@ def tab_home(engine: AnswerEngine) -> None:
         tech_box(r)
 
 
-# ======================================================================= lịch sử
+# lịch sử
 def topic_of(engine, chunk_id) -> str:
     c = engine.by_id.get(chunk_id or "")
     return chunk_topic(c) if c else "–"
@@ -451,7 +449,7 @@ def tab_history(engine: AnswerEngine) -> None:
                        "lich_su_truy_van.csv", "text/csv", icon=":material/download:")
 
 
-# ======================================================================= thống kê
+# thống kê
 def bar(df: pd.DataFrame, x: str, y: str, color: str = "#C9653F", height: int = 300):
     import altair as alt
     return (alt.Chart(df).mark_bar(color=color, cornerRadiusEnd=3)
@@ -512,7 +510,7 @@ def tab_stats(engine: AnswerEngine) -> None:
             st.caption("Chưa có câu nào bị từ chối.")
 
 
-# ======================================================================= giới thiệu
+# giới thiệu
 def tab_about(engine: AnswerEngine) -> None:
     st.markdown('<div class="sec-title">Giới thiệu hệ thống</div>', unsafe_allow_html=True)
     d = pipeline_desc(engine)
@@ -549,15 +547,15 @@ def tab_about(engine: AnswerEngine) -> None:
                  column_config={"Nguồn": st.column_config.LinkColumn(display_text="mở ↗")})
 
 
-# ======================================================================= main
+# main
 def main() -> None:
     header()
     engine = get_engine()
-    # Chỉ chạy tab đang mở: trước đây mỗi lần hỏi cả 4 tab đều chạy lại (đọc SQLite, vẽ biểu đồ thống kê) dù
+    # Chỉ chạy tab đang mở. Hồi trước mỗi lần hỏi là cả 4 tab chạy lại (đọc SQLite, vẽ biểu đồ thống kê) trong khi
     # người dùng chỉ thấy 1 tab. key="nav" để nút "Hỏi lại" chuyển tab được (ask_again).
     tabs = st.tabs(TABS, key="nav", on_change="rerun") if LAZY_TABS else st.tabs(TABS)
     for tab, draw in zip(tabs, (tab_home, tab_history, tab_stats, tab_about)):
-        if getattr(tab, "open", None) is False:     # None: Streamlit cũ không biết tab nào đang mở, vẽ hết như cũ
+        if getattr(tab, "open", None) is False:     # None là Streamlit bản cũ không biết tab nào đang mở, vẽ hết như cũ
             continue
         with tab:
             draw(engine)

@@ -1,13 +1,13 @@
-"""So sánh 2 cách chọn khoản để trích: IDF (cũ) và PhoRanker (line_scorer.py) (M6).
+"""So 2 cách chọn khoản để trích: IDF (cách cũ) và PhoRanker (line_scorer.py).
 
-    python -m src.answer.compare_quote          # train + validation, cần torch + model TV3
+    python -m src.answer.compare_quote          # chạy trên train + validation, cần torch và model của TV3
 
-Truy hồi thật bằng pipeline đã chốt (retrieve() của TV3), mỗi câu chỉ truy hồi 1 lần rồi chọn dòng
-bằng 2 cách trên CÙNG đoạn top-1. Không dùng test. Chỉ tính câu hợp lệ không bị từ chối.
-F1 so với answer_text chỉ là chỉ số gần đúng (answer_text là câu tóm tắt), nên file CSV có cột
+Mỗi câu chỉ truy hồi 1 lần bằng pipeline đã chốt (retrieve() của TV3), rồi chọn dòng bằng 2 cách trên
+cùng một đoạn top-1. Không đụng tập test, chỉ tính câu hợp lệ mà không bị từ chối.
+F1 so với answer_text chỉ là con số tham khảo vì answer_text là câu tóm tắt, nên file CSV có thêm cột
 `dung_hon` để chấm tay: idf / rerank / nhu_nhau / ca_hai_sai.
 
-Kết quả: results/answer/quote_compare.csv, in tóm tắt ra màn hình.
+Ghi ra results/answer/quote_compare.csv và in tóm tắt ra màn hình.
 """
 from __future__ import annotations
 

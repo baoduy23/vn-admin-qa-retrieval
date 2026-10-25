@@ -2,9 +2,9 @@
 
     Theo <tên văn bản>, Điều <X> Khoản <Y>: "<trích nguyên văn>"
 
-Câu trả lời KHÔNG sinh chữ mới: phần trích lấy nguyên văn từ display_text của chunk, chỉ chọn
-ra dòng (khoản / điểm) khớp câu hỏi nhất. Chữ do hệ thống thêm chỉ là khung "Theo ..., Điều ...".
-Nhờ vậy câu trả lời luôn faithful với nguồn, rủi ro còn lại là chọn sai đoạn (đo bằng "đúng nguồn").
+Không sinh chữ mới. Phần trích lấy nguyên văn từ display_text của chunk, chỉ chọn dòng (khoản / điểm)
+khớp câu hỏi nhất. Hệ thống chỉ thêm cái khung "Theo ..., Điều ...". Vì vậy câu trả lời luôn bám nguồn,
+cái có thể sai là chọn nhầm đoạn (đo bằng chỉ số "đúng nguồn").
 """
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ def dieu_number(chunk: dict) -> str:
 
 
 def citation(chunk: dict, quote_lines: list[str] | None = None) -> str:
-    """ "Điều 16 Khoản 1", "Điều 9 Khoản 2 Điểm a". Chunk mức Điều mà trích đúng 1 khoản thì ghi
-    luôn số khoản đọc từ đầu dòng ("2. ..."), để người dùng mở văn bản gốc tìm nhanh hơn."""
+    """Trả về dạng "Điều 16 Khoản 1" hoặc "Điều 9 Khoản 2 Điểm a". Chunk cả Điều mà chỉ trích 1 khoản thì
+    lấy số khoản ở đầu dòng ("2. ...") ghi vào luôn, người dùng mở văn bản gốc dò cho nhanh."""
     parts = [f"Điều {dieu_number(chunk)}"] if dieu_number(chunk) else []
     khoan, diem = chunk.get("khoan"), None
     if quote_lines:
@@ -57,12 +57,12 @@ def line_score(question_terms: set[str], line: str, idf: IDF) -> float:
 def best_quote(question: str, chunk: dict, idf: IDF, prefer: re.Pattern | None = None,
                line_scorer=None) -> list[str]:
     """Chọn dòng (khoản hoặc điểm) khớp câu hỏi nhất trong display_text, giữ nguyên văn.
-    - prefer: mẫu bằng chứng của loại câu hỏi (vd "60 ngày" cho câu hỏi thời hạn). Có dòng nào chứa nó
-      thì chỉ chọn trong các dòng đó: hỏi "bao lâu" thì dòng "có giá trị 6 tháng" phải thắng dòng
-      "không có giá trị khi sử dụng sai mục đích" dù dòng sau trùng nhiều chữ hơn.
-    - Dòng chọn là điểm "a)" → thêm dòng dẫn ở trên ("1. Hồ sơ gồm:") để câu đọc được.
-    - Dòng chọn kết thúc bằng ":" → thêm các điểm ngay sau, tới khi đủ MAX_QUOTE_WORDS.
-    - line_scorer (src/answer/line_scorer.py): có thì chấm dòng bằng cross-encoder thay cho IDF."""
+    - prefer: mẫu con số của loại câu hỏi (vd "60 ngày" với câu hỏi thời hạn). Dòng nào khớp mẫu thì chỉ chọn
+      trong mấy dòng đó. Ví dụ hỏi "bao lâu" thì dòng "có giá trị 6 tháng" phải thắng dòng
+      "không có giá trị khi sử dụng sai mục đích", dù dòng sau trùng nhiều chữ hơn.
+    - Nếu chọn trúng điểm "a)" thì lấy thêm dòng dẫn phía trên ("1. Hồ sơ gồm:") cho đọc hiểu được.
+    - Nếu dòng chọn kết thúc bằng ":" thì lấy thêm các điểm ngay sau, tối đa MAX_QUOTE_WORDS chữ.
+    - Có line_scorer (src/answer/line_scorer.py) thì chấm dòng bằng cross-encoder thay cho IDF."""
     lines = _lines(chunk.get("display_text", ""))
     if not lines:
         return []
@@ -103,8 +103,8 @@ def format_answer(chunk: dict, quote_lines: list[str]) -> str:
 
 
 def highlight_html(text: str, question: str, quote_lines: list[str] | None = None) -> str:
-    """Đoạn trích dạng HTML: âm tiết trùng câu hỏi bọc <mark>, các dòng được chọn làm câu trả lời
-    bọc <span class="quote-line">. So khớp trên dạng bỏ dấu nên câu gõ không dấu vẫn tô được."""
+    """Đoạn trích dạng HTML. Âm tiết trùng câu hỏi bọc trong <mark>, dòng dùng làm câu trả lời bọc trong
+    <span class="quote-line">. So trên dạng bỏ dấu nên câu gõ không dấu vẫn tô được."""
     terms = set(content_syllables(question))
     chosen = set(quote_lines or [])
 

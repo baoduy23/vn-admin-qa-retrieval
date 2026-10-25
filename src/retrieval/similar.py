@@ -1,16 +1,16 @@
-"""Câu hỏi tương tự (M5, TV3): tìm trong bộ câu hỏi đã gán nhãn, KHÔNG lấy câu thuộc tập test.
+"""Câu hỏi tương tự (TV3): tìm trong bộ câu hỏi đã gán nhãn, không lấy câu thuộc tập test.
 
     from src.retrieval.similar import similar_questions
     similar_questions("làm giấy khai sinh cho con cần gì", k=3)
     # [{question_id, question, answer_text, score}, ...]   (cùng dạng với src/answer/similar.py của TV4)
 
-- Kho câu hỏi: train + validation, bỏ out_of_scope / unsupported (không có câu trả lời để gợi ý)
-  và bỏ nhóm thuộc test, để gợi ý không làm lộ đáp án test khi đánh giá.
-- Mỗi nhóm câu hỏi (question_group_id) lấy 1 câu, không hiện 3 cách hỏi của cùng một ý.
-- Có bi-encoder trong pipeline đã chốt (configs/retrieval_selected.yaml) thì so cosine giữa câu
-  hỏi với câu hỏi; không có thì so tỉ lệ âm tiết chung (Dice, dạng bỏ dấu).
-- min_score: ngưỡng tối thiểu để coi là "tương tự"; mặc định lấy trong configs/retrieval_selected.yaml
-  (chọn trên validation), chưa có thì configs/retrieval.yaml.
+- Kho câu hỏi là train + validation, bỏ out_of_scope / unsupported (không có câu trả lời để gợi ý)
+  và bỏ nhóm thuộc test, để gợi ý không làm lộ đáp án test lúc đánh giá.
+- Mỗi nhóm câu hỏi (question_group_id) chỉ lấy 1 câu, khỏi hiện 3 cách hỏi của cùng một ý.
+- Pipeline đã chốt (configs/retrieval_selected.yaml) có bi-encoder thì so cosine giữa câu hỏi với câu hỏi,
+  không có thì so tỉ lệ âm tiết chung (Dice, trên bản bỏ dấu).
+- min_score là ngưỡng tối thiểu để tính là tương tự, mặc định lấy trong configs/retrieval_selected.yaml
+  (chọn trên validation), chưa có thì lấy configs/retrieval.yaml.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _read(rel: str) -> list[dict]:
 
 
 def question_bank(exclude_splits=("test",)) -> list[dict]:
-    """Câu hỏi trả lời được thuộc các split không bị loại. Nhóm không có trong file split nào cũng bị loại
+    """Các câu trả lời được thuộc những split không bị loại. Nhóm không nằm trong file split nào cũng bị loại
     (chưa biết thuộc tập nào thì coi như có thể là test)."""
     split_of = {r["question_group_id"]: s for s in SPLITS for r in _read(f"data/splits/{s}_qgroups.csv")}
     out = []
@@ -61,7 +61,7 @@ class SimilarIndex:
             self.emb = self._encode([r["question"] for r in bank])
 
     def _encode(self, texts: list[str]):
-        # câu hỏi so với câu hỏi: cả hai bên dùng query_prefix
+        # so câu hỏi với câu hỏi nên cả hai bên dùng query_prefix
         xs = [model_input(t, self.mcfg.get("segment", False), self.mcfg.get("query_prefix", ""),
                           self.mcfg.get("restore_diacritics", False)) for t in texts]
         return self.model.encode(xs, batch_size=self.batch_size, normalize_embeddings=True,
