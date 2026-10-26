@@ -15,17 +15,15 @@ tài liệu gốc → làm sạch → chia đoạn → lập chỉ mục → tru
 
 ## Phân công
 
-Chi tiết từng việc ở [file phân công trên Google Docs](https://docs.google.com/document/d/1ZMDBBBsTeBdehL9hAiG091OWIV-9r98egQ3ygFb-t5o/edit).
-
 | | Người | Vai trò | Phụ trách chính | Bàn giao cho |
 |---|---|---|---|---|
-| TV1 | Duy | Dữ liệu + baseline | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản/Điểm, hợp nhất văn bản sửa đổi, làm sạch, chia đoạn có tiền tố "tên văn bản \| Điều", tách từ; freeze dataset; TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 (hard negative) |
-| TV2 | Khang | Bộ test + đánh giá | Guideline gán nhãn (7 loại câu, relevance 2/1); chia người viết và người gán nhãn; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi; 1 script đánh giá chung (Recall@k, MRR, NDCG, tỷ lệ từ chối); chỉ số câu trả lời (F1, đúng nguồn, faithfulness); trưởng phần phân tích lỗi | Cả nhóm (script đánh giá, split) |
-| TV3 | Tín | Mô hình truy hồi | SBERT tiếng Việt, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative nếu kịp; hàm `retrieve()` trả top-k đã rerank kèm điểm; câu hỏi tương tự | TV4 (`retrieve()`) |
-| TV4 | Quân | Trả lời + web | Template trả lời trích nguyên văn kèm nguồn; ngưỡng từ chối chọn trên dev; xử lý câu nhiều ý, câu dễ bịa; hàm `answer()`; Streamlit đủ 7 chức năng, SQLite lưu lịch sử và đánh giá; deploy. Làm khung web trên dữ liệu giả trước, có model thật thì ráp vào | TV5 (link demo) |
-| TV5 | Huy | Slide + báo cáo | Khung báo cáo và slide, thống nhất văn phong; kịch bản demo và video dự phòng; sơ đồ pipeline; log tiến độ nhóm | Cả nhóm |
+| TV1 | Duy | Dữ liệu + baseline | Chốt và hợp nhất 10 văn bản luật (433 đoạn): tải văn bản, tách Chương/Điều/Khoản/Điểm, áp văn bản sửa đổi, làm sạch, chia đoạn có tiền tố "tên văn bản \| Điều", tách từ; freeze dataset; baseline TF-IDF và BM25; hard negative từ top-20 BM25 | Cả nhóm (kho dữ liệu), TV3 (hard negative) |
+| TV2 | Khang | Nhãn + đánh giá + phân tích lỗi | Guideline gán nhãn (7 loại câu, relevance 2/1); đo Cohen's kappa, chốt 707 nhãn trong `qrels.csv` (quy tắc R1–R6); chia train/validation/test theo nhóm câu hỏi; script đánh giá chung cho truy hồi và tầng trả lời; phân tích lỗi (E1–E5); viết phần phương pháp và phân tích lỗi trong báo cáo | Cả nhóm (script đánh giá, split) |
+| TV3 | Tín | Mô hình truy hồi | Bi-encoder (multilingual-e5-base), hybrid min-max với BM25, rerank bằng PhoRanker; khôi phục dấu bằng n-gram; hàm `retrieve()` trả top-k đã rerank kèm điểm; gợi ý câu hỏi tương tự | TV4 (`retrieve()`) |
+| TV4 | Quân | Trả lời + web | Template trích nguyên văn điều luật kèm nguồn; chọn ngưỡng từ chối τ trên validation; tách câu nhiều ý; kiểm tra căn cứ con số; sửa lỗi gõ theo bigram; hàm `answer()`; web Streamlit + SQLite, deploy; slide | TV5 (link demo) |
+| TV5 | Huy | Báo cáo + slide + web | Khung bài báo và slide; sơ đồ pipeline; kịch bản và video demo dự phòng; nhật ký tiến độ; biên soạn 80 câu hỏi (Q0221–Q0300): 40 câu tự viết, 40 câu soạn nháp bằng công cụ rồi rà soát, chỉnh sửa; biên soạn phần kết luận, tài liệu tham khảo và phụ lục; web Streamlit + SQLite, deploy (cùng TV4) | Cả nhóm |
 
-Ngoài ra mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của người khác, không ai tự gán câu mình viết. Ai làm phần nào thì viết phần đó trong báo cáo. Lộ trình: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
+Bộ câu hỏi có 300 câu: 83 câu do thành viên viết, 217 câu soạn nháp bằng công cụ hỗ trợ rồi nhóm rà lại (cột `source` trong `data/labels/questions.csv`). Nhãn ban đầu phần lớn cũng được soạn nháp rồi duyệt; TV1 vừa duyệt nhãn vừa tham gia gán độc lập để đo kappa. Ai làm phần nào thì viết phần đó trong báo cáo. Lộ trình: [docs/lo-trinh-va-phan-cong.md](docs/lo-trinh-va-phan-cong.md).
 
 ## Tiến độ
 
@@ -38,7 +36,7 @@ Tiến độ được theo dõi qua tab Issues và Milestones trên GitHub. Ngư
 | M3 Baseline + Dataset v1 | TV1 Duy | Freeze dataset; TF-IDF, BM25; hard negative từ top-20 BM25 | M1, M2, script đánh giá của TV2 |
 | M4 Đánh giá chung | TV2 Khang | Script đánh giá dùng chung: Recall@k, MRR, NDCG, tỷ lệ từ chối; chỉ số câu trả lời: F1, đúng nguồn, faithfulness | Làm song song, cần xong trước khi chạy mô hình |
 | M5 Mô hình truy hồi | TV3 Tín | SBERT, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative; `retrieve()`; câu hỏi tương tự | M3 |
-| M6 Trả lời + web | TV4 Quân | Template trích nguyên văn kèm nguồn; ngưỡng từ chối trên dev; câu nhiều ý, câu dễ bịa; `answer()`; Streamlit + SQLite; deploy | Khung web làm trước trên dữ liệu giả; ráp thật cần M5 |
+| M6 Trả lời + web | TV4 Quân, TV5 Huy (web, deploy) | Template trích nguyên văn kèm nguồn; ngưỡng từ chối trên dev; câu nhiều ý, câu dễ bịa; `answer()`; Streamlit + SQLite; deploy | Khung web làm trước trên dữ liệu giả; ráp thật cần M5 |
 | M7 Phân tích + báo cáo | TV2 (phân tích lỗi) Khang, TV5 (slide, báo cáo) Huy | 6 phân tích bắt buộc; báo cáo, slide, demo | M5, M6 |
 
 ## Cấu trúc thư mục
@@ -126,3 +124,4 @@ python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu �
 - Commit theo dạng `feat(D04): ...`, `fix(M01): ...`, `docs: ...`.
 - Không sửa dữ liệu trong `data/raw`. File lớn hơn vài MB thì không commit mà để trên Drive chung, sau đó ghi đường dẫn vào `data/raw/source_list.csv`.
 - Không dùng tập test để chọn tham số hoặc ngưỡng từ chối.
+
