@@ -1,6 +1,6 @@
 # configs/
 
-Tham số để hết ở đây, code chỉ đọc vào. Ai đổi tham số thì ghi lý do trong PR.
+Mọi tham số đều đặt trong thư mục này, code chỉ đọc vào. Khi đổi tham số thì ghi lý do trong PR.
 
 | File | Dùng ở | Nội dung chính |
 |---|---|---|
@@ -11,4 +11,4 @@ Tham số để hết ở đây, code chỉ đọc vào. Ai đổi tham số th�
 | `answer_selected.yaml` | `answer()` (Quân) | Do `python -m src.answer.evaluate_answer` tự sinh: ngưỡng từ chối τ và bật/tắt kiểm tra căn cứ cho từng pipeline, chọn trên validation. Không sửa tay |
 | `split.yaml` | chia train/val/test | Chia theo `question_group_id`, phân tầng theo `type`, tỉ lệ 40/20/40, seed 42 |
 
-Lưu ý: gán nhãn xong rồi mà đổi `chunking.yaml` hoặc `preprocessing.yaml` thì `chunk_id` có thể đổi theo, lúc đó phải làm lại qrels.
+Lưu ý: nếu đã gán nhãn xong mà đổi `chunking.yaml` hoặc `preprocessing.yaml` thì `chunk_id` có thể thay đổi theo, khi đó phải làm lại qrels.

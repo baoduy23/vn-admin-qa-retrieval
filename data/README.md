@@ -1,6 +1,6 @@
 # data/
 
-Dữ liệu đi một chiều `raw → interim → processed`. Thư mục sau lúc nào cũng sinh lại được từ thư mục trước bằng code trong `src/data/`, nên đừng sửa tay file trong `interim/` và `processed/`.
+Dữ liệu đi một chiều `raw → interim → processed`. Mỗi thư mục sau đều sinh lại được từ thư mục trước bằng code trong `src/data/`, vì vậy không sửa tay các file trong `interim/` và `processed/`.
 
 | Thư mục / file | Nội dung | Ai tạo | Commit? |
 |---|---|---|---|
@@ -31,11 +31,11 @@ Dữ liệu đi một chiều `raw → interim → processed`. Thư mục sau l�
 | 09.2022.TT-BTP | Thông tư 09/2022/TT-BTP bãi bỏ một số nội dung tại các Thông tư về trợ giúp pháp lý, hộ tịch | `interim/09.2022.TT-BTP.docx` (tải từ vbpl) | Chỉ Điều 2 (bỏ "sổ hộ khẩu, sổ tạm trú" ở khoản 1 Điều 8 và điểm b khoản 3 Điều 9 TT 04/2020) liên quan hộ tịch. Hiệu lực 01/01/2023 |
 | 18.2026.ND-CP | Nghị định 18/2026/NĐ-CP sửa đổi một số nghị định để cắt giảm, đơn giản hóa thủ tục hành chính thuộc Bộ Tư pháp | `interim/18.2026.ND-CP.docx` (tải từ vbpl) | Chỉ Điều 13 (sửa khoản 1 Điều 2, khoản 2 Điều 22, 24, 27, Điều 26 NĐ 123) liên quan hộ tịch. Hiệu lực 15/01/2026 |
 
-File `.html` là trang thuvienphapluat.vn lưu bằng Ctrl+S ("Trang web, chỉ HTML"), chỉ để giữ bản gốc. Code không đọc html. Cách làm là copy phần toàn văn tiếng Việt, dán vào Word bằng Keep Text Only rồi lưu thành `interim/<doc_id>.docx`, nên cả 10 văn bản dùng chung một bộ đọc .docx. File `.pdf` của vanban.chinhphu.vn là bản scan, không lấy chữ ra được, chỉ giữ để đối chiếu.
+File `.html` là trang thuvienphapluat.vn lưu bằng Ctrl+S ("Trang web, chỉ HTML"), chỉ dùng để lưu bản gốc, code không đọc file html. Thay vào đó, phần toàn văn tiếng Việt được copy, dán vào Word bằng Keep Text Only rồi lưu thành `interim/<doc_id>.docx`, nhờ vậy cả 10 văn bản dùng chung một bộ đọc .docx. File `.pdf` của vanban.chinhphu.vn là bản scan, không lấy chữ ra được, chỉ giữ để đối chiếu.
 
 ## Văn bản sửa đổi: `raw/amendments.yaml`
 
-Văn bản sửa đổi viết kiểu "sửa Điều X thành: ...", để nguyên vậy mà chunk thì đọc không hiểu gì. Nên nhóm chọn cách hợp nhất: code tách văn bản gốc trong `interim/`, áp từng dòng của `amendments.yaml` để ra bản đang có hiệu lực, rồi chỉ chunk bản này.
+Văn bản sửa đổi thường viết theo kiểu "sửa Điều X thành: ...", nếu chunk nguyên như vậy thì đoạn tách ra sẽ khó hiểu. Vì vậy nhóm chọn cách hợp nhất: code tách văn bản gốc trong `interim/`, áp từng dòng của `amendments.yaml` để ra bản đang có hiệu lực, rồi chỉ chunk bản này.
 
 - Áp theo thứ tự ngày hiệu lực (07/2025 trước 18/2026). Một chỗ bị sửa nhiều lần thì lấy lần sửa sau cùng.
 - Mỗi phần tử gồm `id`, `op`, `target` (chỗ bị sửa), `source` (Điều, Khoản trong văn bản sửa đổi chứa đoạn trích “...”; code tự lấy câu chữ mới từ đây) và `effective_date`. Giải thích đầy đủ ở đầu file yaml.

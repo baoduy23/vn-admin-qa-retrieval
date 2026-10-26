@@ -1,14 +1,14 @@
 # Phạm vi dữ liệu
 
-> Nhóm điền và chốt file này ở task S01. Sửa phạm vi sau khi đã freeze Dataset v1 phải làm lại nhãn.
+> File này được nhóm điền và chốt ở task S01. Nếu đổi phạm vi sau khi đã freeze Dataset v1 thì phải gán nhãn lại.
 
-**Lĩnh vực đã chọn:** Hộ tịch 
+**Lĩnh vực đã chọn:** Hộ tịch
 
-**Lý do:** người dân hỏi nhiều (khai sinh, kết hôn, khai tử, cải chính...). Quy định chia tầng rõ, Luật nêu nguyên tắc còn Nghị định và Thông tư hướng dẫn chi tiết, nên có câu hỏi phải ghép nhiều văn bản. Nhiều Điều có nội dung na ná nhau (vd đăng ký khai sinh trong nước, có yếu tố nước ngoài, ở khu vực biên giới), dùng được cho phần phân tích bắt buộc về tài liệu gần trùng.
+**Lý do:** đây là mảng người dân hỏi nhiều (khai sinh, kết hôn, khai tử, cải chính...). Quy định được chia tầng rõ ràng: Luật nêu nguyên tắc, còn Nghị định và Thông tư hướng dẫn chi tiết, nên có những câu hỏi phải ghép thông tin từ nhiều văn bản. Ngoài ra, nhiều Điều có nội dung gần giống nhau (ví dụ đăng ký khai sinh trong nước, có yếu tố nước ngoài, ở khu vực biên giới), phù hợp cho phần phân tích bắt buộc về tài liệu gần trùng.
 
 **Ngoài phạm vi (dùng làm câu hỏi từ chối):** đất đai, cư trú, thuế, các lĩnh vực khác; quy định chưa có hiệu lực tại ngày chốt kho (ví dụ "Luật Hộ tịch mới năm 2027 có gì thay đổi?").
 
-**Nguồn chính:** vbpl.vn | CSDL quốc gia về pháp luật (lọc lĩnh vực Hộ tịch); văn bản pháp luật về hộ tịch còn hiệu lực tại ngày tải. Văn bản nào trên vbpl.vn hoặc vanban.chinhphu.vn chỉ có PDF scan (không đọc được chữ) thì lấy toàn văn trên thuvienphapluat.vn và giữ file scan trong `data/raw/` để đối chiếu. Không cào web.
+**Nguồn chính:** vbpl.vn | CSDL quốc gia về pháp luật (lọc lĩnh vực Hộ tịch); lấy các văn bản pháp luật về hộ tịch còn hiệu lực tại ngày tải. Với văn bản mà vbpl.vn hoặc vanban.chinhphu.vn chỉ có bản PDF scan (không lấy được chữ), nhóm dùng toàn văn trên thuvienphapluat.vn và giữ file scan trong `data/raw/` để đối chiếu. Không cào web.
 
 **Văn bản trong kho (Dataset v1): 10 văn bản**
 
@@ -42,9 +42,9 @@ Ngoài phần sửa câu chữ (đã nằm trong bản hợp nhất), phần có
 
 Url, ngày hiệu lực, tình trạng hiệu lực và ngày tải từng văn bản ghi trong `data/raw/source_list.csv` (cột `amended_by`: văn bản sửa câu chữ; `affected_by`: văn bản chỉ ảnh hưởng hiệu lực).
 
-Đã kiểm tra và **không đưa vào**: Nghị định 121/2025/NĐ-CP (phân quyền, phân cấp lĩnh vực Bộ Tư pháp) không có quy định về hộ tịch.
+**Không đưa vào** sau khi kiểm tra: Nghị định 121/2025/NĐ-CP (phân quyền, phân cấp lĩnh vực Bộ Tư pháp), vì văn bản này không có quy định về hộ tịch.
 
-**Mốc hiệu lực của kho:** kho lấy theo quy định hộ tịch còn hiệu lực ngày 09/10/2026, dùng được tới 28/02/2027. Luật Hộ tịch số 03/2026/QH16 có hiệu lực từ 01/3/2027 và thay hết Luật 60/2014, nhưng chưa có hiệu lực nên nhóm không đưa vào. Đây là giới hạn của dữ liệu, phải ghi trong báo cáo. Danh sách văn bản sửa đổi đã đối chiếu với tab Lịch sử trên vbpl.vn ngày 09/10/2026.
+**Mốc hiệu lực của kho:** kho gồm các quy định hộ tịch còn hiệu lực tại ngày 09/10/2026 và dùng được đến hết 28/02/2027. Luật Hộ tịch số 03/2026/QH16 có hiệu lực từ 01/3/2027 và thay thế toàn bộ Luật 60/2014. Vì luật này chưa có hiệu lực tại ngày chốt kho nên nhóm không đưa vào; đây là một giới hạn của dữ liệu và cần nêu trong báo cáo. Danh sách văn bản sửa đổi đã đối chiếu với tab Lịch sử trên vbpl.vn ngày 09/10/2026.
 
 **Ngày chốt:** 2026-10-06 (thêm Nghị định 123/2015 và Thông tư 04/2020 ngày 2026-10-08; thêm 07/2025/NĐ-CP, 04/2024/TT-BTP, 87/2020, 104/2022, 120/2025, cách hợp nhất bằng amendments.yaml và mốc hiệu lực ngày 2026-10-09; thêm 18/2026/NĐ-CP và 09/2022/TT-BTP sau khi đối chiếu vbpl.vn cùng ngày)
 

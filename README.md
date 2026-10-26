@@ -1,8 +1,8 @@
 # Hệ thống gợi ý câu trả lời cho câu hỏi hành chính
 
-Đề tài 10 môn Xử lý ngôn ngữ tự nhiên. Người dùng nhập câu hỏi, hệ thống tìm đoạn luật hoặc câu hỏi tương tự trong kho, xếp hạng rồi trả lời bằng cách trích nguyên văn kèm nguồn. Nhóm làm phần retrieval và question matching, không làm chatbot sinh câu trả lời.
+Đề tài 10 môn Xử lý ngôn ngữ tự nhiên. Người dùng nhập câu hỏi, hệ thống tìm đoạn luật hoặc câu hỏi tương tự trong kho, xếp hạng rồi trả lời bằng cách trích nguyên văn kèm nguồn. Phần nhóm làm là truy hồi (retrieval) và so khớp câu hỏi (question matching), hệ thống không tự sinh câu trả lời như chatbot.
 
-Nhóm chọn lĩnh vực hộ tịch: khai sinh, kết hôn, khai tử, thay đổi và cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục. Kho lấy theo quy định hộ tịch còn hiệu lực ngày 09/10/2026, dùng được tới 28/02/2027. Phạm vi chốt ở [docs/scope.md](docs/scope.md).
+Nhóm chọn lĩnh vực hộ tịch: khai sinh, kết hôn, khai tử, thay đổi và cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục. Kho dữ liệu gồm các quy định hộ tịch còn hiệu lực tại ngày 09/10/2026 và dùng được đến hết 28/02/2027. Phạm vi đã chốt nằm ở [docs/scope.md](docs/scope.md).
 
 ## Pipeline
 
@@ -29,7 +29,7 @@ Ngoài ra mỗi người viết khoảng 60 câu hỏi và gán nhãn câu của
 
 ## Tiến độ
 
-Theo dõi ở tab Issues và Milestones trên GitHub. Mỗi milestone có một người phụ trách chính, giống bảng phân công ở trên.
+Tiến độ được theo dõi qua tab Issues và Milestones trên GitHub. Người phụ trách chính của mỗi milestone trùng với bảng phân công ở trên.
 
 | Milestone | Phụ trách | Nội dung | Phụ thuộc |
 |---|---|---|---|
@@ -63,7 +63,7 @@ artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
 
-Mỗi thư mục có README riêng ghi file nào làm gì, chạy lệnh gì: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/answer](src/answer/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
+Thư mục nào cũng có README riêng, ghi rõ từng file làm gì và chạy bằng lệnh nào: [data](data/README.md), [src/data](src/data/README.md), [src/labels](src/labels/README.md), [src/retrieval](src/retrieval/README.md), [src/answer](src/answer/README.md), [src/app](src/app/README.md), [configs](configs/README.md), [results](results/README.md).
 
 ## Chạy thử
 
@@ -75,7 +75,7 @@ python -m pytest
 
 ## Pipeline dữ liệu (TV1)
 
-Kho gồm 10 văn bản luật về hộ tịch còn hiệu lực ngày 09/10/2026: Luật Hộ tịch 60/2014/QH13, các Nghị định, Thông tư hướng dẫn và văn bản sửa đổi. Nhóm tải tay từ vbpl.vn, văn bản nào vbpl hoặc vanban.chinhphu.vn chỉ có PDF scan thì lấy toàn văn trên thuvienphapluat.vn, không cào web. Danh sách ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
+Kho gồm 10 văn bản luật về hộ tịch còn hiệu lực ngày 09/10/2026: Luật Hộ tịch 60/2014/QH13, các Nghị định, Thông tư hướng dẫn và văn bản sửa đổi. Văn bản được tải tay từ vbpl.vn. Với văn bản mà vbpl.vn hoặc vanban.chinhphu.vn chỉ có bản PDF scan, nhóm lấy toàn văn trên thuvienphapluat.vn. Nhóm không cào web. Danh sách văn bản ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
 
 ```
 data/raw/        file gốc tải về (.doc, .pdf, .html trang TVPL), không sửa
@@ -85,7 +85,7 @@ data/interim/    <doc_id>.docx, bản gốc chưa áp sửa đổi
 data/processed/  chunks.jsonl: 1 Điều = 1 đoạn, Điều dài quá 200 từ thì tách theo Khoản
 ```
 
-Chạy lại từ raw tới kết quả baseline (đứng ở gốc repo, chạy đúng thứ tự):
+Để chạy lại từ dữ liệu gốc đến kết quả baseline, đứng ở thư mục gốc của repo và chạy lần lượt:
 
 ```bash
 python -m src.data.parse_law          # interim/*.docx → processed/units.jsonl (kiểm số Điều từng văn bản)
@@ -110,7 +110,7 @@ streamlit run src/app/main.py          # web hỏi đáp; máy chưa cài torch:
 python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu để trang Thống kê có số liệu khi demo
 ```
 
-`answer()` trả lời theo mẫu `Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>"`. Nó từ chối khi điểm top-1 dưới τ, hoặc khi câu hỏi cần con số (tiền, phạt, tuổi, thời hạn) mà văn bản tìm được không có số đó. Câu nhiều ý thì tách ra trả lời từng ý. Web có đủ 7 chức năng đề bài yêu cầu. Chi tiết và cách deploy xem [src/answer](src/answer/README.md), [src/app](src/app/README.md), phần báo cáo của Quân ở [docs/bao-cao-quan.md](docs/bao-cao-quan.md).
+`answer()` trả lời theo mẫu `Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>"`. Hàm sẽ từ chối trả lời khi điểm top-1 thấp hơn τ, hoặc khi câu hỏi cần một con số (tiền, phạt, tuổi, thời hạn) mà văn bản tìm được không có số đó. Với câu hỏi nhiều ý, hệ thống tách ra và trả lời lần lượt từng ý. Giao diện web có đủ 7 chức năng theo yêu cầu của đề bài. Chi tiết và cách deploy nằm ở [src/answer](src/answer/README.md), [src/app](src/app/README.md), phần báo cáo của Quân ở [docs/bao-cao-quan.md](docs/bao-cao-quan.md).
 
 ## Tài liệu
 
@@ -124,5 +124,5 @@ python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu �
 
 - Nhánh `main` chỉ nhận code qua Pull Request. Mỗi task một nhánh `feature/<ID>-<mo-ta>`, vd `feature/D04-question-labels`.
 - Commit theo dạng `feat(D04): ...`, `fix(M01): ...`, `docs: ...`.
-- Không sửa dữ liệu trong `data/raw`. Không commit file lớn hơn vài MB, để trên Drive chung rồi ghi đường dẫn vào `data/raw/source_list.csv`.
+- Không sửa dữ liệu trong `data/raw`. File lớn hơn vài MB thì không commit mà để trên Drive chung, sau đó ghi đường dẫn vào `data/raw/source_list.csv`.
 - Không dùng tập test để chọn tham số hoặc ngưỡng từ chối.
