@@ -4,32 +4,31 @@
   "n_documents": 10,
   "n_documents_chunked": 9,
   "n_chunks": 433,
-  "n_questions": 160,
-  "n_question_groups": 81,
+  "n_questions": 300,
+  "n_question_groups": 141,
   "n_questions_by_type": {
-    "confusable": 23,
-    "direct": 32,
-    "multi_intent": 16,
-    "out_of_scope": 18,
-    "paraphrase": 42,
-    "underspecified": 16,
-    "unsupported": 13
+    "confusable": 46,
+    "direct": 50,
+    "multi_intent": 34,
+    "out_of_scope": 34,
+    "paraphrase": 73,
+    "underspecified": 34,
+    "unsupported": 29
   },
   "n_questions_by_split": {
-    "train": 64,
-    "validation": 32,
-    "test": 64
+    "train": 127,
+    "validation": 57,
+    "test": 116
   },
   "chunks_sha256": "8b646830eb641520eb2974d7fc8e8aa02f7709c1ef441c298af0fd6ab1a7f1f3",
-  "questions_sha256": "f50dfeee50951e8323f440dee8288f590f7d5c61b250e1b27b6e52d32cdd3a6b",
-  "qrels_sha256": "4a587a27e0ade4925f08649d636995942c2336a0efde4e2813392b8fdec69da0",
+  "questions_sha256": "94dfa602058829283c973643cff53b3861f6ad6feb4465411c4d69518428a551",
+  "qrels_sha256": "b0002c7e0023c8ddb5fb57edebe4d619135ccaa94ba5aabd2da07f1f48172918",
   "segmenter": "underthesea 9.5.0",
   "random_seed": 42,
-  "source_commit": "49b8c9c4280c5cd96ac24ee424d7c515a6a6eff5",
-  "created_at": "2026-10-15T02:15:44+00:00",
+  "source_commit": "9f09661f7cacede5c4d58f3ccd4fc3aa2d7701cb",
+  "created_at": "2026-10-27T16:40:11+00:00",
   "review_status": "draft",
   "warnings": [
-    "138 câu source=generated: người trong nhóm phải duyệt (mục 7.1.5), test nên ưu tiên câu người viết",
-    "chưa có results/data_quality/label_agreement.md (Cohen kappa, TV2 chủ trì)"
+    "217 câu source=generated: người trong nhóm phải duyệt (mục 7.1.5), test nên ưu tiên câu người viết"
   ]
 }
