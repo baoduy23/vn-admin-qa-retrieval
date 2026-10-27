@@ -32,10 +32,10 @@ Tiến độ được theo dõi qua tab Issues và Milestones trên GitHub. Ngư
 | Milestone | Phụ trách | Nội dung | Phụ thuộc |
 |---|---|---|---|
 | M1 Kho dữ liệu | TV1 Duy | Chốt danh sách văn bản luật (số hiệu, URL, ngày tải); tải văn bản, tách Chương/Điều/Khoản/Điểm, hợp nhất văn bản sửa đổi, làm sạch, chia đoạn có tiền tố, tách từ | |
-| M2 Bộ test | TV2 Khang | Guideline gán nhãn 7 loại câu; phân công viết và gán nhãn chéo (~60 câu/người); Cohen's kappa; chia train/dev/test theo nhóm câu hỏi | Câu hỏi viết được ngay; gán nhãn cần M1 |
+| M2 Bộ test | TV2 Khang | Guideline gán nhãn 7 loại câu; phân công viết câu hỏi (83 câu thành viên viết, 217 câu soạn nháp rồi rà soát) và gán nhãn chéo; Cohen's kappa; chia train/dev/test theo nhóm câu hỏi | Câu hỏi viết được ngay; gán nhãn cần M1 |
 | M3 Baseline + Dataset v1 | TV1 Duy | Freeze dataset; TF-IDF, BM25; hard negative từ top-20 BM25 | M1, M2, script đánh giá của TV2 |
 | M4 Đánh giá chung | TV2 Khang | Script đánh giá dùng chung: Recall@k, MRR, NDCG, tỷ lệ từ chối; chỉ số câu trả lời: F1, đúng nguồn, faithfulness | Làm song song, cần xong trước khi chạy mô hình |
-| M5 Mô hình truy hồi | TV3 Tín | SBERT, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20; fine-tune bằng hard negative; `retrieve()`; câu hỏi tương tự | M3 |
+| M5 Mô hình truy hồi | TV3 Tín | SBERT, hybrid với BM25; cross-encoder hoặc PhoBERT rerank top-20 (dùng model có sẵn, không fine-tune); `retrieve()`; câu hỏi tương tự | M3 |
 | M6 Trả lời + web | TV4 Quân, TV5 Huy (web, deploy) | Template trích nguyên văn kèm nguồn; ngưỡng từ chối trên dev; câu nhiều ý, câu dễ bịa; `answer()`; Streamlit + SQLite; deploy | Khung web làm trước trên dữ liệu giả; ráp thật cần M5 |
 | M7 Phân tích + báo cáo | TV2 (phân tích lỗi) Khang, TV5 (slide, báo cáo) Huy | 6 phân tích bắt buộc; báo cáo, slide, demo | M5, M6 |
 
@@ -54,7 +54,6 @@ src/labels/        gán nhãn chéo, Cohen's kappa
 src/retrieval/     BM25, TF-IDF, SBERT, cross-encoder, metrics
 src/answer/        answer(): trích nguyên văn kèm nguồn, ngưỡng từ chối, câu nhiều ý (Quân)
 src/app/           web Streamlit + SQLite lịch sử, đánh giá (Quân)
-notebooks/         thử nghiệm trước khi chuyển thành script (01_doc_luat.ipynb)
 tests/             pytest
 results/           báo cáo chất lượng, bảng kết quả
 artifacts/         index, model (không commit file lớn)
@@ -71,7 +70,15 @@ pip install -r requirements.txt
 python -m pytest
 ```
 
-## Pipeline dữ liệu (TV1)
+## Lưu ý khi chạy lại
+
+Tập test đã được chạy đúng 1 lần, ngày 24/10/2026. Mọi số liệu trong báo cáo đều lấy từ lần chạy đó.
+
+- Không chạy lệnh nào có `--test` (`src.retrieval.evaluate`, `src.retrieval.evaluate_models`, `src.answer.evaluate_answer`).
+- Không chạy `python -m src.answer.evaluate_answer` khi không có `--test` để làm mới kết quả: lệnh này ghi đè `results/answer/answer_report.md` (mất mục test) và `configs/answer_selected.yaml`.
+- Không chạy lại `python -m src.data.split`: script chia lại toàn bộ 300 câu từ đầu nên ra kết quả khác với `data/splits/` hiện tại (80 câu Q0221–Q0300 được chia riêng phần nhóm mới). Muốn xem script chia ra sao thì ghi ra chỗ khác bằng `--out <thư mục tạm>`.
+
+## Pipeline dữ liệu (TV1 Duy)
 
 Kho gồm 10 văn bản luật về hộ tịch còn hiệu lực ngày 09/10/2026: Luật Hộ tịch 60/2014/QH13, các Nghị định, Thông tư hướng dẫn và văn bản sửa đổi. Văn bản được tải tay từ vbpl.vn. Với văn bản mà vbpl.vn hoặc vanban.chinhphu.vn chỉ có bản PDF scan, nhóm lấy toàn văn trên thuvienphapluat.vn. Nhóm không cào web. Danh sách văn bản ở [data/raw/source_list.csv](data/raw/source_list.csv), lý do chọn ở [docs/scope.md](docs/scope.md).
 
@@ -90,25 +97,59 @@ python -m src.data.parse_law          # interim/*.docx → processed/units.jsonl
 python -m src.data.apply_amendments   # + raw/amendments.yaml → processed/units_current.jsonl, amendments_log.csv
 python -m src.data.chunk              # → processed/chunks.jsonl (433 chunk)
 python -m src.data.corpus_report      # → results/data_quality/corpus_report.md
-python -m src.labels.sample_double   # phân người gán nhãn chéo + 20% gán đôi → labels/label_assignments.csv
-python -m src.labels.kappa --a A.csv --b B.csv --out results/data_quality/label_agreement
-python -m src.data.split              # labels/questions.csv → splits/*_qgroups.csv
-python -m src.data.freeze             # kiểm tiêu chí freeze → data/dataset_manifest.json
-python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation (thêm --test để chạy test 1 lần)
+python -m src.data.freeze             # kiểm tiêu chí freeze (cần qrels và split của TV2) → data/dataset_manifest.json
+python -m src.retrieval.evaluate      # TF-IDF, BM25 trên validation
 python -m src.retrieval.hard_negatives  # → processed/train_pairs.csv
 python -m pytest
 ```
 
-## Trả lời và web (Quân)
+## Nhãn và đánh giá (TV2 Khang)
+
+Mỗi cặp (câu hỏi, chunk) được gán nhãn theo [guideline](data/labels/annotation_guideline.md), gồm 7 loại câu và 3 mức liên quan: 2 nếu chunk tự trả lời được câu hỏi, 1 nếu chunk có liên quan nhưng phải đọc kèm chunk khác, 0 nếu không liên quan. Câu `out_of_scope` và `unsupported` không có qrels. Để đo Cohen's kappa, các thành viên gán lại độc lập 56 câu (322 cặp câu hỏi – đoạn) rồi so với nhãn hiện có. Kappa thấp hơn 0,6 nên các cặp lệch được chốt trong buổi họp ngày 24/10/2026 theo quy tắc R1–R6, qrels giảm từ 722 xuống 707 dòng (`data/labels/qrels.csv`). Kappa trong [label_agreement.md](results/data_quality/label_agreement.md) là số đo trước buổi chốt và không tính lại sau đó. Bảng chốt từng cặp kèm lý do nằm ở [label_adjudication.csv](results/data_quality/label_adjudication.csv).
+
+Câu hỏi được chia train/validation/test theo `question_group_id` (các cách hỏi khác nhau của cùng một ý luôn nằm chung một tập) và phân tầng theo loại câu, seed 42. Kết quả: 127 / 57 / 116 câu.
+
+```bash
+python -m src.labels.tim_chunk "giấy khai sinh ghi sai ngày sinh"   # in top-5 chunk BM25, dùng để tìm chunk khi gán qrels
+python -m src.labels.sample_double    # phân người gán chính + chọn 20% nhóm cho người thứ hai → labels/label_assignments.csv
+python -m src.labels.kappa --a A.csv --b B.csv --out results/data_quality/label_agreement   # kappa 2 mức, 3 mức, mức câu + bảng cặp lệch
+python -m src.data.split --out <thư mục tạm>   # xem cách chia; không ghi đè data/splits/ (xem Lưu ý khi chạy lại)
+```
+
+Các chỉ số Recall@k, MRR, NDCG@k nằm ở [src/retrieval/metrics.py](src/retrieval/metrics.py). Cả 3 script đánh giá (`evaluate`, `evaluate_models`, `evaluate_answer`) đều gọi chung file này, nên số của mọi mô hình tính theo cùng một cách. Top-10 của từng câu trên từng mô hình được ghi ở `results/retrieval/models/runs/`, kết quả tách theo loại câu ở `models_by_type.csv`. Phần phân tích lỗi trong báo cáo dùng các file này.
+
+## Mô hình truy hồi (TV3 Tín)
+
+Truy hồi chạy theo 2 bước. Bước đầu là hybrid: điểm BM25 và điểm bi-encoder `intfloat/multilingual-e5-base` được chuẩn hoá min-max rồi gộp với alpha 0.9. Sau đó cross-encoder `itdainb/PhoRanker` xếp lại top-20 của bước đầu, cộng thêm tối đa 5 chunk đứng đầu BM25 mà bước đầu bỏ sót. Câu gõ không dấu được khôi phục dấu bằng bảng n-gram trước khi đưa vào 2 model, còn BM25 vẫn tìm trên bản bỏ dấu của kho. Mọi tham số được chọn trên validation và ghi vào `configs/retrieval_selected.yaml`; `retrieve()` và `similar_questions()` đều đọc file này. Câu hỏi tương tự được lấy từ train + validation (không lấy test), mỗi nhóm 1 câu, chỉ hiện khi cosine từ 0.9 trở lên. Nhóm dùng model có sẵn, không fine-tune. `finetune.py` đã viết nhưng chưa chạy.
+
+```bash
+pip install sentence-transformers torch   # cần cho bi-encoder và cross-encoder, lần chạy đầu sẽ tải model
+python -m src.retrieval.evaluate_models   # validation: so BM25, SBERT, hybrid, rerank → configs/retrieval_selected.yaml, results/retrieval/models/
+```
+
+```python
+from src.retrieval.retrieve import retrieve
+from src.retrieval.similar import similar_questions
+retrieve("dang ky khai sinh can giay to gi", k=5)    # [(chunk_id, score), ...], đã rerank
+similar_questions("làm giấy khai sinh cho con cần gì", k=3)
+```
+
+Trên test, rerank đạt MRR 0.796 và NDCG@10 0.691, trong khi BM25 baseline đạt 0.506 và 0.432. Bảng đầy đủ và kết quả tách theo loại câu ở [models_report.md](results/retrieval/models/models_report.md), chi tiết từng file ở [src/retrieval](src/retrieval/README.md).
+
+## Trả lời và web (TV4 Quân)
 
 ```bash
 python -m src.app.images               # (tuỳ chọn) tải 3 ảnh giao diện mặc định về src/app/static/img/
-python -m src.answer.evaluate_answer   # chọn ngưỡng từ chối τ trên validation → configs/answer_selected.yaml, results/answer/
+python -m src.answer.evaluate_answer   # đã chạy ngày 24/10, KHÔNG chạy lại (ghi đè answer_report.md, mất mục test)
 streamlit run src/app/main.py          # web hỏi đáp; máy chưa cài torch: đặt ANSWER_PIPELINE=bm25 trước lệnh
 python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu để trang Thống kê có số liệu khi demo
 ```
 
 `answer()` trả lời theo mẫu `Theo <tên văn bản>, Điều X Khoản Y: "<trích nguyên văn>"`. Hàm sẽ từ chối trả lời khi điểm top-1 thấp hơn τ, hoặc khi câu hỏi cần một con số (tiền, phạt, tuổi, thời hạn) mà văn bản tìm được không có số đó. Với câu hỏi nhiều ý, hệ thống tách ra và trả lời lần lượt từng ý. Giao diện web có đủ 7 chức năng theo yêu cầu của đề bài. Chi tiết và cách deploy nằm ở [src/answer](src/answer/README.md), [src/app](src/app/README.md), phần báo cáo của Quân ở [docs/bao-cao-quan.md](docs/bao-cao-quan.md).
+
+## Báo cáo, slide và demo (TV5 Huy)
+
+Huy soạn 80 câu Q0221–Q0300 (nhóm G141–G180): 40 câu tự viết (`source = human`) và 40 câu soạn nháp bằng công cụ hỗ trợ rồi rà soát (`source = generated`). Trong 80 câu có 10 câu `out_of_scope` và 10 câu `unsupported`, dùng để kiểm tra khả năng từ chối. Huy cùng Quân deploy web lên Streamlit Community Cloud ([hoidap-hotich.streamlit.app](https://hoidap-hotich.streamlit.app)); các bước deploy ở [src/app](src/app/README.md#deploy-lên-streamlit-community-cloud).
 
 ## Tài liệu
 
@@ -124,4 +165,3 @@ python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu �
 - Commit theo dạng `feat(D04): ...`, `fix(M01): ...`, `docs: ...`.
 - Không sửa dữ liệu trong `data/raw`. File lớn hơn vài MB thì không commit mà để trên Drive chung, sau đó ghi đường dẫn vào `data/raw/source_list.csv`.
 - Không dùng tập test để chọn tham số hoặc ngưỡng từ chối.
-
