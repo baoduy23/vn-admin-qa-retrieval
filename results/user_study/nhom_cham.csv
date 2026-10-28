@@ -1,0 +1,18 @@
+participant,cau,question,app_lam,pham_vi,quyet_dinh_dung,nguon_top1_dung,ghi_chu
+P01,1,lam giay khai sinh,tra_loi,in_scope,Đúng,,
+P01,2,thủ tục đăng ký kết hôn,tra_loi,in_scope,Đúng,,
+P01,3,Thời hạn đăng ký khai tử là bao lâu?,tra_loi,in_scope,Đúng,,
+P01,4,làm passport,tra_loi,out_of_scope,Sai,,"Mẫu hộ chiếu/xuất nhập cảnh trong bộ lọc ngoài phạm vi không có từ ""passport"" nên câu lọt qua; app trả lời thay vì từ chối"
+P01,5,đăng ký hộ tịch gồm thủ tục gì,tra_loi,in_scope,Đúng,,
+P03,1,"Vợ tôi vừa sinh bé ở bệnh viện huyện, giờ đi làm giấy khai sinh cho bé thì phải mang theo những gì?",tra_loi,in_scope,Đúng,,
+P03,2,arsenal co vo dich C1 ko,tu_choi,out_of_scope,Đúng,khong_ap_dung,
+P03,3,làm chứng tử muộn bị phạt gì,tu_choi,unsupported,Đúng,khong_ap_dung,Corpus không có văn bản xử phạt vi phạm hành chính
+P04,1,"ba toi moi mat o nha, ai phai di khai tu va trong bao lau",tra_loi,in_scope,Đúng,,
+P04,2,Ông bà nội muốn làm người giám hộ cho cháu mồ côi thì cần giáy tờ gì?,tu_choi,in_scope,Sai,khong_ap_dung,"Corpus có đăng ký giám hộ (Luật 60/2014, Điều 19–23); app từ chối"
+P04,3,muốn xin Visa thì làm như nào,tu_choi,out_of_scope,Đúng,khong_ap_dung,
+P05,1,Đăng ký khai sinh cần những giấy tờ gì?,tra_loi,in_scope,Đúng,,
+P05,2,trời hôm nay mưa hay nắng,tu_choi,out_of_scope,Đúng,khong_ap_dung,
+P05,3,đăng kí khai tẻ,tra_loi,in_scope,Đúng,,Gõ sai chính tả (khai tử)
+P02,1,làm giấy khai tử muộn có bị phạt không,tu_choi,unsupported,Đúng,khong_ap_dung,Corpus không có văn bản xử phạt vi phạm hành chính
+P02,2,sửa đổi giấy khai sinh như thế nào,tu_choi,in_scope,Sai,khong_ap_dung,"Thuộc thay đổi, cải chính hộ tịch (Luật 60/2014, Điều 26–28); app từ chối"
+P02,3,đổi tên,tra_loi,in_scope,Đúng,,Câu thiếu thông tin (underspecified)
