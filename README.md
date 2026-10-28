@@ -4,6 +4,18 @@
 
 Nhóm chọn lĩnh vực hộ tịch: khai sinh, kết hôn, khai tử, thay đổi và cải chính hộ tịch, nhận cha mẹ con, giám hộ, trích lục. Kho dữ liệu gồm các quy định hộ tịch còn hiệu lực tại ngày 09/10/2026 và dùng được đến hết 28/02/2027. Phạm vi đã chốt nằm ở [docs/scope.md](docs/scope.md).
 
+## Dùng thử
+
+Web: https://hoidap-hotich.streamlit.app
+
+1. Gõ câu hỏi về hộ tịch vào ô tìm kiếm (có dấu hay không dấu đều được), hoặc bấm một câu hỏi mẫu trong mục "Tìm kiếm chủ đề hữu ích".
+2. Đọc câu trả lời đề xuất: hệ thống trích nguyên văn điều luật, ghi rõ văn bản, Điều, Khoản. Bên dưới là 5 đoạn luật gần nhất kèm link văn bản gốc.
+3. Nếu không đủ căn cứ, hệ thống báo "Chưa đủ căn cứ để trả lời" và nêu lý do thay vì đoán. Câu hỏi ngoài hộ tịch (thuế, đất đai, hộ chiếu…) cũng bị từ chối.
+4. Bấm "Hữu ích" hoặc "Chưa đúng" để đánh giá câu trả lời. Cột bên phải gợi ý các câu hỏi tương tự.
+5. Tab Lịch sử truy vấn để lọc, hỏi lại hoặc tải CSV; tab Thống kê xem tỉ lệ trả lời/từ chối và chủ đề hỏi nhiều.
+
+Lần đầu mở web có thể mất 1–2 phút để nạp mô hình; sau đó mỗi câu mất khoảng 5 giây. Lịch sử trên bản web bị xoá mỗi lần app khởi động lại. Chạy trên máy: xem [src/app](src/app/README.md).
+
 ## Pipeline
 
 ```
@@ -150,6 +162,10 @@ python -m src.app.demo_seed            # (tùy chọn) nạp lịch sử mẫu �
 ## Báo cáo, slide và demo (TV5 Huy)
 
 Huy soạn 80 câu Q0221–Q0300 (nhóm G141–G180): 40 câu tự viết (`source = human`) và 40 câu soạn nháp bằng công cụ hỗ trợ rồi rà soát (`source = generated`). Trong 80 câu có 10 câu `out_of_scope` và 10 câu `unsupported`, dùng để kiểm tra khả năng từ chối. Huy cùng Quân deploy web lên Streamlit Community Cloud ([hoidap-hotich.streamlit.app](https://hoidap-hotich.streamlit.app)); các bước deploy ở [src/app](src/app/README.md#deploy-lên-streamlit-community-cloud).
+
+## Đánh giá người dùng
+
+Ngày 29/10/2026 nhóm nhờ người ngoài nhóm dùng thử bản web, mỗi người tự đặt 3–5 câu hỏi rồi điền phiếu: câu trả lời có đúng ý không, nguồn có liên quan không, có dễ hiểu và hữu ích không (thang 1–5), và thang SUS 10 câu. Nhóm chấm lại từng câu theo hướng dẫn gán nhãn. Các câu này không được thêm vào bộ test. Số người ít nên kết quả chỉ mang tính mô tả. Phiếu (đã bỏ cột thời gian), bảng nhóm chấm và kết quả nằm ở [results/user_study](results/user_study/README.md).
 
 ## Tài liệu
 
