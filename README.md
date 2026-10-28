@@ -165,7 +165,7 @@ Huy soạn 80 câu Q0221–Q0300 (nhóm G141–G180): 40 câu tự viết (`sour
 
 ## Đánh giá người dùng
 
-Ngày 29/10/2026 nhóm nhờ người ngoài nhóm dùng thử bản web, mỗi người tự đặt 3–5 câu hỏi rồi điền phiếu: câu trả lời có đúng ý không, nguồn có liên quan không, có dễ hiểu và hữu ích không (thang 1–5), và thang SUS 10 câu. Nhóm chấm lại từng câu theo hướng dẫn gán nhãn. Các câu này không được thêm vào bộ test. Số người ít nên kết quả chỉ mang tính mô tả. Phiếu (đã bỏ cột thời gian), bảng nhóm chấm và kết quả nằm ở [results/user_study](results/user_study/README.md).
+Ngày 29/10/2026 nhóm nhờ người ngoài nhóm dùng thử bản web, mỗi người tự đặt 3–5 câu hỏi rồi điền phiếu: câu trả lời có đúng ý không, nguồn có liên quan không, có dễ hiểu và hữu ích không (thang 1–5), và thang SUS 10 câu. Nhóm chấm lại từng câu theo hướng dẫn gán nhãn. Các câu này không được thêm vào bộ test. Số người ít nên kết quả chỉ mang tính mô tả. Phiếu (đã bỏ cột thời gian), bảng nhóm chấm và kết quả nằm ở [results/user_study]
 
 ## Tài liệu
 
