@@ -68,6 +68,7 @@ src/answer/        answer(): trích nguyên văn kèm nguồn, ngưỡng từ ch
 src/app/           web Streamlit + SQLite lịch sử, đánh giá (Quân)
 tests/             pytest
 results/           báo cáo chất lượng, bảng kết quả
+results/user_study/  phiếu và kết quả đánh giá người dùng
 artifacts/         index, model (không commit file lớn)
 docs/              đề bài, phạm vi, hướng dẫn từng thành viên
 ```
@@ -165,7 +166,7 @@ Huy soạn 80 câu Q0221–Q0300 (nhóm G141–G180): 40 câu tự viết (`sour
 
 ## Đánh giá người dùng
 
-Ngày 29/10/2026 nhóm nhờ người ngoài nhóm dùng thử bản web, mỗi người tự đặt 3–5 câu hỏi rồi điền phiếu: câu trả lời có đúng ý không, nguồn có liên quan không, có dễ hiểu và hữu ích không (thang 1–5), và thang SUS 10 câu. Nhóm chấm lại từng câu theo hướng dẫn gán nhãn. Các câu này không được thêm vào bộ test. Số người ít nên kết quả chỉ mang tính mô tả. Phiếu (đã bỏ cột thời gian), bảng nhóm chấm và kết quả nằm ở [results/user_study]
+Ngày 29/10/2026 nhóm nhờ 5 người ngoài nhóm dùng thử bản web. Mỗi người tự đặt 3–5 câu hỏi, không dùng câu có sẵn trong bộ dữ liệu, tổng cộng 17 câu, rồi điền phiếu: câu trả lời có đúng ý không, nguồn có liên quan không, có dễ hiểu và hữu ích không (thang 1–5), và thang SUS 10 câu. Nhóm chấm lại từng câu theo hướng dẫn gán nhãn. Hệ thống quyết định trả lời/từ chối đúng 14/17 câu, SUS trung bình 67,5. Ba câu sai: hai câu về giám hộ và sửa giấy khai sinh bị từ chối nhầm, câu "làm passport" lọt bộ lọc ngoài phạm vi vì danh sách từ khóa chưa có từ "passport". Các câu này không được thêm vào bộ test. Số người ít nên kết quả chỉ mang tính mô tả. Phiếu (đã bỏ cột thời gian), bảng nhóm chấm và kết quả nằm ở [results/user_study](results/user_study/README.md).
 
 ## Tài liệu
 
